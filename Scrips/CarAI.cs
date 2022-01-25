@@ -55,7 +55,7 @@ namespace UnityStandardAssets.Vehicles.Car
         private void FixedUpdate()
         {
             // Execute your path here
-            // ...here
+            // ...
 
             // this is how you access information about the terrain from the map
             int i = terrain_manager.myInfo.get_i_index(transform.position.x);
