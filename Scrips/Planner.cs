@@ -49,13 +49,15 @@ namespace UnityStandardAssets.Vehicles.Car
             x_low = terrain_manager.myInfo.x_low;
             z_low = terrain_manager.myInfo.z_low;
             int k = 0;
+            int l = 0;
+            int m = 0;
 
             // Create the startnode
             startNode = new Node(start_pos.x, start_pos.z, start_angle, calculateGridIndex(start_pos.x, start_pos.z), 0, 0, 0, null);
-
+            Debug.Log(calculateGridIndex(start_pos.x, start_pos.z));
             // Create the goalnode
             goalNode = new Node(goal_pos.x, goal_pos.z, 0, calculateGridIndex(goal_pos.x, goal_pos.z), 0, 0, 0, null);
-
+            Debug.Log(calculateGridIndex(goal_pos.x, goal_pos.z));
             // Creating the open set (Priority queue for guided search of map)
             FastPriorityQueue<Node> openSet = new FastPriorityQueue<Node>(MAX_SIZE);
 
@@ -67,18 +69,16 @@ namespace UnityStandardAssets.Vehicles.Car
 
             while(openSet.Count > 0)
             {   
-                k++;
 
-                if(k == 2)
+                if(openSet.Count >= MAX_SIZE)
                 {
+                    Debug.Log("Open set is full");
                     return null;
                 }
-                
                 // Getting node with highest priority from open set
                 Node highestPriorityNode = openSet.Dequeue();
-
-                // Push node onto the set of expanded nodes
-                closedSet.Add(highestPriorityNode.gridIdx, highestPriorityNode);
+                //k++;
+                //Debug.Log("How many times we have taken a node out of the priorityQueue: " + k);
 
                 // If the node is in the vicinity of the goal, assign it as parent to the goalnode and return the goalnode
                 if(calculateEuclidean(highestPriorityNode.x, highestPriorityNode.z, goalNode.x, goalNode.z) < 2)
@@ -91,36 +91,42 @@ namespace UnityStandardAssets.Vehicles.Car
                 // Expand node
                 foreach(float steerAngle in steering)
                 {   
-                    Debug.Log("Steer angle: " + steerAngle);
+                    //Debug.Log("Steer angle: " + steerAngle);
                     // Compute new values
                     float actualAngle = highestPriorityNode.theta + steerAngle;
-                    Debug.Log("Actual angle: " + actualAngle);
+                    //Debug.Log("Actual angle: " + actualAngle);
                     float dx = (float)Math.Cos(actualAngle)*(float)Math.Sqrt(2);
-                    Debug.Log("Change in x: " + dx);
+                    //Debug.Log("Change in x: " + dx);
                     float dz = (float)Math.Sin(actualAngle)*(float)Math.Sqrt(2);
-                    Debug.Log("Change in z: " + dz);
+                    //Debug.Log("Change in z: " + dz);
                     Node sucessor = new Node(highestPriorityNode.x + dx, highestPriorityNode.z + dz, actualAngle, calculateGridIndex(highestPriorityNode.x + dx, highestPriorityNode.z + dz), 0, 0, 0, highestPriorityNode);
-                    Debug.Log("x of precessor: " + highestPriorityNode.x);
+                    //l++;
+                    //Debug.Log("How many sucessors we have created: " + l);
+                    /*Debug.Log("x of precessor: " + highestPriorityNode.x);
                     Debug.Log("z of precessor: " + highestPriorityNode.z);
                     Debug.Log("Grid index of precessor: " + highestPriorityNode.gridIdx);
                     Debug.Log("x of sucessor: " + sucessor.x);
                     Debug.Log("z of sucessor: " + sucessor.z);
                     Debug.Log("Grid index of sucessor: " + sucessor.gridIdx);
-
+                    */
                     // Check traversability
                     if(obstacle_map[(int)Math.Round((sucessor.x - x_low) / 1),(int)Math.Round((sucessor.z - z_low) / 1)] == 1)
-                    {
+                    {   
                         continue;
                     }                    
                     
                     // Check if the sucessor is expanded
                     if (!closedSet.ContainsKey(sucessor.gridIdx))
                     {
-                        sucessor.g = highestPriorityNode.g + 1;
+                        sucessor.g = highestPriorityNode.g + (float)Math.Sqrt(2);
                         bool flag = false;
                         
                         foreach(Node one in openSet)
                         {   
+                            //m++;
+                            //Debug.Log("How many nodes in open set: " + m);
+                            //Debug.Log("x of node in open set: " + one.x);
+                            //Debug.Log("z of node in open set: " + one.z);
                             // Check if the sucessor has a neighbour in the same cell
                             if(one.gridIdx == sucessor.gridIdx)
                             {   
@@ -134,18 +140,18 @@ namespace UnityStandardAssets.Vehicles.Car
                             }
                         }
                         
-
                         if(!openSet.Contains(sucessor) || flag)
                         {   
                             // Add the sucessor to the open list if it is not there or it has lower cost than a currently existing node in the same cell
                             sucessor.h = calculateEuclidean(sucessor.x, sucessor.z, goalNode.x, goalNode.z);
                             sucessor.f = sucessor.g + sucessor.h;
                             openSet.Enqueue(sucessor, sucessor.f);
+                            // Push node onto the set of expanded nodes
+                            closedSet.Add(sucessor.gridIdx, sucessor);
                         }
                     }
                 }
             }
-            
             return null;
         }
     }
