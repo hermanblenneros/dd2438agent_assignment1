@@ -24,13 +24,6 @@ namespace UnityStandardAssets.Vehicles.Car
             ;
         }
 
-        public Planner(Vector3 start_pos, float start_angle, Vector3 goal_pos)
-        {
-            this.startNode = new Node(start_pos.x, start_pos.z, start_angle, calculateGridIndex(start_pos.x, start_pos.z), 0, 0, 0, null);
-            this.goalNode = new Node(goal_pos.x, goal_pos.z, 0, calculateGridIndex(start_pos.x, start_pos.z), 0, 0, 0, null);
-            this.steering = new float[]{-maxSteerAngle -maxSteerAngle/2, 0, maxSteerAngle/2, maxSteerAngle};
-        }
-
         private float calculateEuclidean(float x1, float z1, float x2, float z2)
         {
             return (float)Math.Sqrt(Math.Pow( (x1-x2) , 2) + Math.Pow( (z1-z2), 2 ));
@@ -45,14 +38,23 @@ namespace UnityStandardAssets.Vehicles.Car
             return gridIdx;
         }
 
-        public Node HybridAStar(TerrainManager terrain_manager, CarController m_car, Vector3 start_pos, float start_angle, Vector3 goal_pos, float[,] obstacle_map, int MAX_SIZE = 10000)
+        public Node HybridAStar(TerrainManager terrain_manager, CarController m_Car, Vector3 start_pos, float start_angle, Vector3 goal_pos, float[,] obstacle_map, int MAX_SIZE = 10000)
         {   
-
+            Debug.Log("In HybridAStar");
             // Computing the gridSize
-            maxSteerAngle = m_car.m_MaximumSteerAngle;
+            //maxSteerAngle = m_Car.m_MaximumSteerAngle;
+            //Debug.Log("Maximum steer angle: " + maxSteerAngle);
+            steering = new float[]{-(float)Math.PI/4, -(float)Math.PI/8, 0, (float)Math.PI/8, (float)Math.PI/4};
             gridSize = terrain_manager.myInfo.x_high - terrain_manager.myInfo.x_low;
             x_low = terrain_manager.myInfo.x_low;
             z_low = terrain_manager.myInfo.z_low;
+            int k = 0;
+
+            // Create the startnode
+            startNode = new Node(start_pos.x, start_pos.z, start_angle, calculateGridIndex(start_pos.x, start_pos.z), 0, 0, 0, null);
+
+            // Create the goalnode
+            goalNode = new Node(goal_pos.x, goal_pos.z, 0, calculateGridIndex(goal_pos.x, goal_pos.z), 0, 0, 0, null);
 
             // Creating the open set (Priority queue for guided search of map)
             FastPriorityQueue<Node> openSet = new FastPriorityQueue<Node>(MAX_SIZE);
@@ -65,17 +67,17 @@ namespace UnityStandardAssets.Vehicles.Car
 
             while(openSet.Count > 0)
             {   
+                k++;
+
+                if(k == 2)
+                {
+                    return null;
+                }
+                
                 // Getting node with highest priority from open set
                 Node highestPriorityNode = openSet.Dequeue();
 
                 // Push node onto the set of expanded nodes
-                if(closedSet.ContainsKey(highestPriorityNode.gridIdx))
-                {
-                    Debug.Log("Info of priority node" + highestPriorityNode.x + " " + highestPriorityNode.z + " " + highestPriorityNode.gridIdx);
-                    Node sameNode = closedSet[highestPriorityNode.gridIdx];
-                    Debug.Log("Info of same-key node" + sameNode.x + " " + sameNode.z + " " + sameNode.gridIdx);
-                }
-
                 closedSet.Add(highestPriorityNode.gridIdx, highestPriorityNode);
 
                 // If the node is in the vicinity of the goal, assign it as parent to the goalnode and return the goalnode
@@ -89,12 +91,21 @@ namespace UnityStandardAssets.Vehicles.Car
                 // Expand node
                 foreach(float steerAngle in steering)
                 {   
+                    Debug.Log("Steer angle: " + steerAngle);
                     // Compute new values
                     float actualAngle = highestPriorityNode.theta + steerAngle;
+                    Debug.Log("Actual angle: " + actualAngle);
                     float dx = (float)Math.Cos(actualAngle)*(float)Math.Sqrt(2);
+                    Debug.Log("Change in x: " + dx);
                     float dz = (float)Math.Sin(actualAngle)*(float)Math.Sqrt(2);
-
+                    Debug.Log("Change in z: " + dz);
                     Node sucessor = new Node(highestPriorityNode.x + dx, highestPriorityNode.z + dz, actualAngle, calculateGridIndex(highestPriorityNode.x + dx, highestPriorityNode.z + dz), 0, 0, 0, highestPriorityNode);
+                    Debug.Log("x of precessor: " + highestPriorityNode.x);
+                    Debug.Log("z of precessor: " + highestPriorityNode.z);
+                    Debug.Log("Grid index of precessor: " + highestPriorityNode.gridIdx);
+                    Debug.Log("x of sucessor: " + sucessor.x);
+                    Debug.Log("z of sucessor: " + sucessor.z);
+                    Debug.Log("Grid index of sucessor: " + sucessor.gridIdx);
 
                     // Check traversability
                     if(obstacle_map[(int)Math.Round((sucessor.x - x_low) / 1),(int)Math.Round((sucessor.z - z_low) / 1)] == 1)
@@ -106,22 +117,8 @@ namespace UnityStandardAssets.Vehicles.Car
                     if (!closedSet.ContainsKey(sucessor.gridIdx))
                     {
                         sucessor.g = highestPriorityNode.g + 1;
-
-                        for(int i=0;i<number;i++)
-                        {
-      
-                            if(openSet[i].gridIdx == sucessor.gridIdx)
-                            {
-                                    // Remove the neighbour from the cell if the sucessor has lower cost
-                                if (sucessor.g < openSet[i].g)
-                                {   
-                                    flag = true;
-                                    openSet.Remove(openSet[i]);
-                                    break;
-                                }
-                            }
-                        }
-                        /*
+                        bool flag = false;
+                        
                         foreach(Node one in openSet)
                         {   
                             // Check if the sucessor has a neighbour in the same cell
@@ -136,7 +133,7 @@ namespace UnityStandardAssets.Vehicles.Car
                                 }
                             }
                         }
-                        */
+                        
 
                         if(!openSet.Contains(sucessor) || flag)
                         {   
