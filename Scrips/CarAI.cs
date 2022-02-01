@@ -16,35 +16,67 @@ namespace UnityStandardAssets.Vehicles.Car
 
         private void Start()
         {
-            // get the car controller
+            // Get the car controller
             m_Car = GetComponent<CarController>();
+
+            // Get the terrain manager
             terrain_manager = terrain_manager_game_object.GetComponent<TerrainManager>();
 
-            // Plan your path here
-            // Replace the code below that makes a random path
-            // ...
-
+            // Get start and goal position
             Vector3 start_pos = terrain_manager.myInfo.start_pos;
+            Debug.Log("start_pos :" + start_pos);
+
             Vector3 goal_pos = terrain_manager.myInfo.goal_pos;
+            Debug.Log("goal_pos :" + goal_pos);
+            
+            // Create mapper and compute obstacle map
+            Mapper mapper = new Mapper(terrain_manager);
+            float[,] obstacle_map = mapper.configure_obstacle_map(terrain_manager);
 
+            foreach(float val in obstacle_map)
+            {   
+                if(val != 1 && val != 0)
+                {
+                    Debug.Log(val);
+                }
+            }
 
-            List<Node> my_path = new List<Node>();
+            Debug.Log(obstacle_map.GetLength(0));
+            Debug.Log(obstacle_map.GetLength(1));
 
-            HybridAstar has = new HybridAstar(terrain_manager, m_Car);
-            my_path = has.Build();
-            Node goal = new Node(null, goal_pos, 0, 0, Mathf.PI / 2);
-            my_path.Add(goal);
+            // Create planner and compute path
+            Planner planner = new Planner(start_pos, 0, goal_pos);
+
+            Debug.Log(planner);
+
+            Node goalNode = planner.HybridAStar(terrain_manager, m_Car, start_pos, 0, goal_pos, obstacle_map, 10000);
+            
+            Debug.Log(goalNode);
+
+            List<Vector3> my_path = new List<Vector3>();
+            
+            my_path.Add(goal_pos);
+            
+            Node parent = goalNode.parent;
+
+            while(parent != null)
+            {   
+                Vector3 waypoint = new Vector3(parent.x, 0, parent.z);
+                my_path.Add(waypoint);
+                parent = parent.parent;
+            }
+            
+            my_path.Add(start_pos);
+            my_path.Reverse();
 
             // Plot your path to see if it makes sense
-            // Note that path can only be seen in "Scene" window, not "Game" window
             Vector3 old_wp = start_pos;
             foreach (var wp in my_path)
             {
-                Debug.DrawLine(old_wp, wp.pos, Color.red, 100f);
-                old_wp = wp.pos;
+                Debug.DrawLine(old_wp, wp, Color.red, 100f);
+                Debug.Log("hello");
+                old_wp = wp;
             }
-
-            
         }
 
 
@@ -52,7 +84,7 @@ namespace UnityStandardAssets.Vehicles.Car
         {
             // Execute your path here
             // ...
-
+            /*
             // this is how you access information about the terrain from the map
             int i = terrain_manager.myInfo.get_i_index(transform.position.x);
             int j = terrain_manager.myInfo.get_j_index(transform.position.z);
@@ -75,8 +107,8 @@ namespace UnityStandardAssets.Vehicles.Car
             // this is how you control the car
             m_Car.Move(1f, 1f, 1f, 0f);
 
+            */
+
         }
-
-
     }
 }

@@ -1,87 +1,30 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
 
 [RequireComponent(typeof(DroneController))]
 public class DroneAI : MonoBehaviour
 {
 
-    private DroneController m_Drone; // the drone controller we want to use
+    private DroneController m_Drone;
 
     public GameObject terrain_manager_game_object;
+
     TerrainManager terrain_manager;
 
     private void Start()
     {
-        // get the drone controller
+        // Get the drone controller
         m_Drone = GetComponent<DroneController>();
+        // Get the terrain manager
         terrain_manager = terrain_manager_game_object.GetComponent<TerrainManager>();
 
-        // Getting start and goal pos
+        // Getting start and goal position
         Vector3 start_pos = terrain_manager.myInfo.start_pos;
         Vector3 goal_pos = terrain_manager.myInfo.goal_pos;
 
-        // Accessing grid info
-        float x_low = terrain_manager.myInfo.x_low;
-        float x_high = terrain_manager.myInfo.x_high;
-        int x_N = terrain_manager.myInfo.x_N;
-        float x_res = (x_high - x_low)/x_N;
-        float z_low = terrain_manager.myInfo.z_low;
-        float z_high = terrain_manager.myInfo.z_high;
-        int z_N = terrain_manager.myInfo.z_N;
-        float z_res = (z_high - z_low)/z_N;
-        float[,] travGrid = terrain_manager.myInfo.traversability;
-        Debug.Log("x_low: " + x_low);
-        Debug.Log("x_high: " + x_high);
-        Debug.Log("x_N: " + x_N);
-        Debug.Log("x_res: " + x_res);
-        Debug.Log("z_low: " + z_low);
-        Debug.Log("z_high: " + z_high);
-        Debug.Log("z_N: " + z_N);
-        Debug.Log("z_res: " + z_res);
-
-        // Upsample traversability grid
-        int[,] temp = new int[(int)(x_high-x_low), z_N];
-        int[,] upsampGrid = new int[(int)(x_high-x_low), (int)(z_high-z_low)];
-        // Upsample in the x-direction
-        for(int i = 0; i < x_N; i++)
-        {
-            for(int j = 0; j < x_res; j++)
-            {
-                for(int k = 0; k < z_N; k++)
-                {
-                    float val = travGrid[i,k];
-                    temp[j + (int)x_res*i, k] = (int)val;
-                }
-            }
-        }
-        // Upsample in the z-direction
-        for(int i = 0; i < z_N; i++)
-        {
-            for(int j = 0; j < z_res; j++)
-            {
-                for(int k = 0; k < (int)(x_high-x_low); k++)
-                {
-                    float val = travGrid[k,i];
-                    upsampGrid[k,j + (int)z_res*i] = (int)val;
-                }
-            }
-        }
-        // Dilate the obstacles
-        int[,] dilatedObs = new int[(int)(x_high-x_low), (int)(z_high-z_low)];
-
-        for(int i = 1; i < (int)(x_high-x_low) - 1; i++)
-        {
-            for(int j = 1; j < (int)(x_high-x_low) - 1; j++)
-            {
-                int neighbours = upsampGrid[i-1,j] + upsampGrid[i-1,j-1] + upsampGrid[i, j-1] + upsampGrid[i+1,j-1] + upsampGrid[i+1,j] + upsampGrid[i+1,j+1] + upsampGrid[i,j+1] + upsampGrid[i-1, j+1];
-                if(neighbours >= 1)
-                {
-                    dilatedObs[i,j] = 1;
-                }
-            }
-        }
-
+        // Initialize the path
         List<Vector3> my_path = new List<Vector3>();
 
         // Plan your path here
