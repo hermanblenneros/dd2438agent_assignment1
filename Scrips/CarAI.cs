@@ -51,6 +51,7 @@ namespace UnityStandardAssets.Vehicles.Car
             my_path.Add(start_pos);
             my_path.Reverse();
 
+
             // Plot your path to see if it makes sense
             Vector3 old_wp = start_pos;
             foreach (var wp in my_path)
