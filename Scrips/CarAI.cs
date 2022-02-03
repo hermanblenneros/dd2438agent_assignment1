@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
@@ -17,9 +17,8 @@ namespace UnityStandardAssets.Vehicles.Car
         Vector3 goal_pos;
         public float speedchange = 0;
         public bool hasnext = false;
-        Node startNode = null;
 
-        List<Node> track_Node = null;
+        List<Node2> track_Node = new List<Node2>();
 
         private void Start()
         {
@@ -40,7 +39,7 @@ namespace UnityStandardAssets.Vehicles.Car
             // Create planner and compute path
             Planner planner = new Planner();
 
-            Node goalNode = planner.HybridAStar(terrain_manager, m_Car, start_pos, 0, goal_pos, obstacle_map, 10000);
+            Node goalNode = planner.HybridAStar(terrain_manager, m_Car, start_pos, (float)Math.PI/2, goal_pos, obstacle_map, 10000);
             
             my_path.Add(goal_pos);
             
@@ -50,7 +49,6 @@ namespace UnityStandardAssets.Vehicles.Car
             {   
                 Vector3 waypoint = new Vector3(parent.x, 0, parent.z);
                 my_path.Add(waypoint);
-                startNode = parent;
                 parent = parent.parent;
             }
             my_path.Add(start_pos);
@@ -69,25 +67,35 @@ namespace UnityStandardAssets.Vehicles.Car
         {
             // Execute your path here
             // ...
-            if(track_Node==null)
+            if(track_Node.Count == 0 )
             {
                 
-                Debug.Log("Track start!!!: " );
-                PurePursuit pp = new PurePursuit(startNode, my_path, m_Car.CurrentSpeed);
+                Debug.Log("Track start!!!: " + m_Car.CurrentSpeed);
+                Node2 start = new Node2(start_pos.x, start_pos.z,0,0 ,(float)Math.PI / 2, m_Car.CurrentSpeed);
+                PurePursuit pp = new PurePursuit(start, my_path);
                 track_Node = pp.PurePursuitA();
+                
+                //draw the blue line for tracking path
                 List<Vector3> track_path = new List<Vector3>();
-                foreach (Node one in track_Node)
+                foreach (Node2 one in track_Node)
                 {
                     Vector3 waypoint = new Vector3(one.x, 0, one.z);
                     track_path.Add(waypoint);
                 }
+
                 Vector3 old_wp = start_pos;
                 foreach (var wp in track_path)
                 {
                     Debug.DrawLine(old_wp, wp, Color.yellow, 100f);
                     old_wp = wp;
                 }
-                Debug.Log("Track draw!!!: ");
+
+               // Debug.Log("Track node size: " + track_Node.Count);
+
+            }
+            else
+            {
+               
             }
 
             //m_Car.Move(1f, 1f, 1f, 0f);
