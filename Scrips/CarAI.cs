@@ -95,7 +95,7 @@ namespace UnityStandardAssets.Vehicles.Car
             }
             else
             {
-               
+               // Debug.Log("Track node size: " + track_Node.Count);
             }
 
             //m_Car.Move(1f, 1f, 1f, 0f);
