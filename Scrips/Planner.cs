@@ -11,13 +11,26 @@ namespace UnityStandardAssets.Vehicles.Car
 
     public class Planner
     {
-        private Node startNode { get; set;}
-        private Node goalNode { get; set;}
-        private float[] steering { get; set;}
-        public float gridSize = 0;
+        private Node startNode;
+        private Node goalNode;
+        private float[] steering;
+        public float x_size = 0;
+        public float z_size = 0;
+        public float x_res = 0;
+        public float z_res = 0;
         public float x_low = 0;
+        public float x_high = 0;
+        public float z_high = 0;
         public float z_low = 0;
-        public float maxSteerAngle = 0;
+        public float arc = 0;
+        public Vector3 draw0;
+        public Vector3 draw1;
+        public Vector3 draw2;
+        public List<Vector3> draw_list = new List<Vector3>();
+        private Node n;
+        private Node sucessor;
+        private float maxSteerAngle = 0;
+        private float[] key = new float[2];
 
         public Planner()
         {
@@ -31,9 +44,9 @@ namespace UnityStandardAssets.Vehicles.Car
 
         public int calculateGridIndex(float x, float z)
         {
-            int xIdx = (int)Math.Round((x - x_low) / 1);
-            int zIdx = (int)Math.Round((z - z_low) / 1);
-            int gridIdx = zIdx*( (int)gridSize + 1) + xIdx;
+            int xIdx = (int)Math.Round((x - x_low) / x_res);
+            int zIdx = (int)Math.Round((z - z_low) / z_res);
+            int gridIdx = zIdx*( (int)x_size + 1) + xIdx;
 
             return gridIdx;
         }
@@ -41,23 +54,31 @@ namespace UnityStandardAssets.Vehicles.Car
         public Node HybridAStar(TerrainManager terrain_manager, CarController m_Car, Vector3 start_pos, float start_angle, Vector3 goal_pos, float[,] obstacle_map, int MAX_SIZE = 10000)
         {   
             Debug.Log("In HybridAStar");
-            // Computing the gridSize
-            //maxSteerAngle = m_Car.m_MaximumSteerAngle;
-            //Debug.Log("Maximum steer angle: " + maxSteerAngle);
-            steering = new float[]{-(float)Math.PI/4, -(float)Math.PI/8, 0, (float)Math.PI/8, (float)Math.PI/4};
-            gridSize = terrain_manager.myInfo.x_high - terrain_manager.myInfo.x_low;
+            
+            // Control list
+            maxSteerAngle = m_Car.m_MaximumSteerAngle*(float)Math.PI/180;
+            Debug.Log("Maximum steering angle: " + maxSteerAngle);
+            steering = new float[]{0, -maxSteerAngle, maxSteerAngle};
+            
+            // Getting map info
+            x_size = obstacle_map.GetLength(0);
+            z_size = obstacle_map.GetLength(1);
             x_low = terrain_manager.myInfo.x_low;
+            x_high = terrain_manager.myInfo.x_high;
             z_low = terrain_manager.myInfo.z_low;
-            int k = 0;
-            int l = 0;
-            int m = 0;
+            z_high = terrain_manager.myInfo.z_high;
+            x_res = (x_high - x_low)/x_size;
+            z_res = (z_high - z_low)/z_size;
+            arc = (float)Math.Sqrt(Math.Pow(x_res, 2) + Math.Pow(z_res, 2));
 
             // Create the startnode
             startNode = new Node(start_pos.x, start_pos.z, start_angle, calculateGridIndex(start_pos.x, start_pos.z), 0, 0, 0, null);
             Debug.Log(calculateGridIndex(start_pos.x, start_pos.z));
+
             // Create the goalnode
             goalNode = new Node(goal_pos.x, goal_pos.z, 0, calculateGridIndex(goal_pos.x, goal_pos.z), 0, 0, 0, null);
             Debug.Log(calculateGridIndex(goal_pos.x, goal_pos.z));
+
             // Creating the open set (Priority queue for guided search of map)
             FastPriorityQueue<Node> openSet = new FastPriorityQueue<Node>(MAX_SIZE);
 
@@ -75,15 +96,14 @@ namespace UnityStandardAssets.Vehicles.Car
                     Debug.Log("Open set is full");
                     return null;
                 }
+
                 // Getting node with highest priority from open set
-                Node highestPriorityNode = openSet.Dequeue();
-                //k++;
-                //Debug.Log("How many times we have taken a node out of the priorityQueue: " + k);
+                n = openSet.Dequeue();
 
                 // If the node is in the vicinity of the goal, assign it as parent to the goalnode and return the goalnode
-                if(calculateEuclidean(highestPriorityNode.x, highestPriorityNode.z, goalNode.x, goalNode.z) < 2)
+                if(calculateEuclidean(n.x, n.z, goalNode.x, goalNode.z) < 2)
                 {
-                    Node finalNode = new Node(goalNode.x, goalNode.z, goalNode.theta, calculateGridIndex(goalNode.x, goalNode.z), 0, 0, 0, highestPriorityNode);
+                    Node finalNode = new Node(goalNode.x, goalNode.z, goalNode.theta, calculateGridIndex(goalNode.x, goalNode.z), 0, 0, 0, n);
                     goalNode = finalNode;
                     return goalNode;
                 }
@@ -91,42 +111,41 @@ namespace UnityStandardAssets.Vehicles.Car
                 // Expand node
                 foreach(float steerAngle in steering)
                 {   
-                    //Debug.Log("Steer angle: " + steerAngle);
-                    // Compute new values
-                    float actualAngle = highestPriorityNode.theta + steerAngle;
-                    //Debug.Log("Actual angle: " + actualAngle);
-                    float dx = (float)Math.Cos(actualAngle)*(float)Math.Sqrt(2);
-                    //Debug.Log("Change in x: " + dx);
-                    float dz = (float)Math.Sin(actualAngle)*(float)Math.Sqrt(2);
-                    //Debug.Log("Change in z: " + dz);
-                    Node sucessor = new Node(highestPriorityNode.x + dx, highestPriorityNode.z + dz, actualAngle, calculateGridIndex(highestPriorityNode.x + dx, highestPriorityNode.z + dz), 0, 0, 0, highestPriorityNode);
-                    //l++;
-                    //Debug.Log("How many sucessors we have created: " + l);
-                    /*Debug.Log("x of precessor: " + highestPriorityNode.x);
-                    Debug.Log("z of precessor: " + highestPriorityNode.z);
-                    Debug.Log("Grid index of precessor: " + highestPriorityNode.gridIdx);
-                    Debug.Log("x of sucessor: " + sucessor.x);
-                    Debug.Log("z of sucessor: " + sucessor.z);
-                    Debug.Log("Grid index of sucessor: " + sucessor.gridIdx);
-                    */
+                    float actualAngle = n.theta + steerAngle;
+                    float dx = (float)Math.Cos(actualAngle)*arc;
+                    float dz = (float)Math.Sin(actualAngle)*arc;
+                    sucessor = new Node(n.x + dx, n.z + dz, actualAngle, calculateGridIndex(n.x + dx, n.z + dz), 0, 0, 0, n);
+
                     // Check traversability
-                    if(obstacle_map[(int)Math.Round((sucessor.x - x_low) / 1),(int)Math.Round((sucessor.z - z_low) / 1)] == 1)
-                    {   
-                        continue;
-                    }                    
+                    try
+                    {
+                        if(obstacle_map[(int)Math.Round((sucessor.x - x_low) / x_res),(int)Math.Round((sucessor.z - z_low) / z_res)] == 1)
+                        {   
+                            //draw1 = new Vector3(n.x, 0, n.z);
+                            //draw2 = new Vector3(sucessor.x, 0, sucessor.z);
+                            //Debug.DrawLine(draw1, draw2, Color.yellow, 100f);
+                            continue;
+                        }
+                    }
+                    catch(IndexOutOfRangeException e) 
+                    {
+                        Debug.Log("x: " + (sucessor.x - x_low) / 1);
+                        Debug.Log("x index: " + (int)Math.Round((sucessor.x - x_low) / 1));
+                        Debug.Log("z: " + (sucessor.z - z_low) / 1);
+                        Debug.Log("z index: " + (int)Math.Round((sucessor.z - z_low) / 1));
+                        Debug.Log(e);
+                        return null;
+                    }              
                     
                     // Check if the sucessor is expanded
                     if (!closedSet.ContainsKey(sucessor.gridIdx))
-                    {
-                        sucessor.g = highestPriorityNode.g + (float)Math.Sqrt(2);
+                    {   
+                        float steeringPenalty = 1/2*(1 - steerAngle/maxSteerAngle);
+                        sucessor.g = n.g + (float)Math.Sqrt(2) + steeringPenalty;
                         bool flag = false;
                         
                         foreach(Node one in openSet)
                         {   
-                            //m++;
-                            //Debug.Log("How many nodes in open set: " + m);
-                            //Debug.Log("x of node in open set: " + one.x);
-                            //Debug.Log("z of node in open set: " + one.z);
                             // Check if the sucessor has a neighbour in the same cell
                             if(one.gridIdx == sucessor.gridIdx)
                             {   
@@ -146,12 +165,19 @@ namespace UnityStandardAssets.Vehicles.Car
                             sucessor.h = calculateEuclidean(sucessor.x, sucessor.z, goalNode.x, goalNode.z);
                             sucessor.f = sucessor.g + sucessor.h;
                             openSet.Enqueue(sucessor, sucessor.f);
+
+                            // Drawing some stuff
+                            //draw1 = new Vector3(n.x, 0, n.z);
+                            //draw2 = new Vector3(sucessor.x, 0, sucessor.z);
+                            //Debug.DrawLine(draw1, draw2, Color.blue, 100f);
+
                             // Push node onto the set of expanded nodes
                             closedSet.Add(sucessor.gridIdx, sucessor);
                         }
                     }
                 }
             }
+            Debug.Log("No path found!");
             return null;
         }
     }
