@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
@@ -13,7 +13,8 @@ namespace UnityStandardAssets.Vehicles.Car
         public GameObject terrain_manager_game_object;
         TerrainManager terrain_manager;
         List<Vector3> my_path = new List<Vector3>();
-
+        Vector3 start_pos;
+        Vector3 goal_pos;
         public float speedchange = 0;
         public bool hasnext = false;
         Node startNode = null;
@@ -29,8 +30,8 @@ namespace UnityStandardAssets.Vehicles.Car
             terrain_manager = terrain_manager_game_object.GetComponent<TerrainManager>();
 
             // Get start and goal position
-            Vector3 start_pos = terrain_manager.myInfo.start_pos;
-            Vector3 goal_pos = terrain_manager.myInfo.goal_pos;
+            start_pos = terrain_manager.myInfo.start_pos;
+            goal_pos = terrain_manager.myInfo.goal_pos;
             
             // Create mapper and compute obstacle map
             Mapper mapper = new Mapper(terrain_manager);
@@ -55,7 +56,6 @@ namespace UnityStandardAssets.Vehicles.Car
             my_path.Add(start_pos);
             my_path.Reverse();
 
-
             // Plot your path to see if it makes sense
             Vector3 old_wp = start_pos;
             foreach (var wp in my_path)
@@ -71,12 +71,26 @@ namespace UnityStandardAssets.Vehicles.Car
             // ...
             if(track_Node==null)
             {
+                
+                Debug.Log("Track start!!!: " );
                 PurePursuit pp = new PurePursuit(startNode, my_path, m_Car.CurrentSpeed);
                 track_Node = pp.PurePursuitA();
+                List<Vector3> track_path = new List<Vector3>();
+                foreach (Node one in track_Node)
+                {
+                    Vector3 waypoint = new Vector3(one.x, 0, one.z);
+                    track_path.Add(waypoint);
+                }
+                Vector3 old_wp = start_pos;
+                foreach (var wp in track_path)
+                {
+                    Debug.DrawLine(old_wp, wp, Color.yellow, 100f);
+                    old_wp = wp;
+                }
+                Debug.Log("Track draw!!!: ");
             }
 
-            
-            //m_Car.Move(1f, 1f, 1f, 0f)
+            //m_Car.Move(1f, 1f, 1f, 0f);
             /*// this is how you access information about the terrain from the map
             int i = terrain_manager.myInfo.get_i_index(transform.position.x);
             int j = terrain_manager.myInfo.get_j_index(transform.position.z);
@@ -99,7 +113,7 @@ namespace UnityStandardAssets.Vehicles.Car
             // this is how you control the car
             m_Car.Move(1f, 1f, 1f, 0f);
             */
-            
+
 
         }
     }
