@@ -10,9 +10,15 @@ namespace UnityStandardAssets.Vehicles.Car
     public class CarAI : MonoBehaviour
     {
         private CarController m_Car; // the car controller we want to use
-
         public GameObject terrain_manager_game_object;
         TerrainManager terrain_manager;
+        List<Vector3> my_path = new List<Vector3>();
+
+        public float speedchange = 0;
+        public bool hasnext = false;
+        Node startNode = null;
+
+        List<Node> track_Node = null;
 
         private void Start()
         {
@@ -34,8 +40,6 @@ namespace UnityStandardAssets.Vehicles.Car
             Planner planner = new Planner();
 
             Node goalNode = planner.HybridAStar(terrain_manager, m_Car, start_pos, 0, goal_pos, obstacle_map, 10000);
-
-            List<Vector3> my_path = new List<Vector3>();
             
             my_path.Add(goal_pos);
             
@@ -45,9 +49,9 @@ namespace UnityStandardAssets.Vehicles.Car
             {   
                 Vector3 waypoint = new Vector3(parent.x, 0, parent.z);
                 my_path.Add(waypoint);
+                startNode = parent;
                 parent = parent.parent;
             }
-            
             my_path.Add(start_pos);
             my_path.Reverse();
 
@@ -60,13 +64,18 @@ namespace UnityStandardAssets.Vehicles.Car
             }
         }
 
-
         private void FixedUpdate()
         {
             // Execute your path here
             // ...
-            /*
-            // this is how you access information about the terrain from the map
+            if(track_Node==null)
+            {
+                PurePursuit pp = new PurePursuit(startNode, my_path, m_Car.CurrentSpeed);
+                track_Node = pp.PurePursuitA();
+            }
+
+            m_Car.Move(1f, 1f, 1f, 0f)
+            /*// this is how you access information about the terrain from the map
             int i = terrain_manager.myInfo.get_i_index(transform.position.x);
             int j = terrain_manager.myInfo.get_j_index(transform.position.z);
             float grid_center_x = terrain_manager.myInfo.get_x_pos(i);
@@ -87,8 +96,8 @@ namespace UnityStandardAssets.Vehicles.Car
 
             // this is how you control the car
             m_Car.Move(1f, 1f, 1f, 0f);
-
             */
+            
 
         }
     }
