@@ -75,7 +75,8 @@ namespace UnityStandardAssets.Vehicles.Car
                 track_Node = pp.PurePursuitA();
             }
 
-            m_Car.Move(1f, 1f, 1f, 0f)
+            
+            //m_Car.Move(1f, 1f, 1f, 0f)
             /*// this is how you access information about the terrain from the map
             int i = terrain_manager.myInfo.get_i_index(transform.position.x);
             int j = terrain_manager.myInfo.get_j_index(transform.position.z);
