@@ -21,40 +21,49 @@ namespace UnityStandardAssets.Vehicles.Car
         public int old_nearest_point_index = -1;
         Node2 current;
         List<Vector3> my_path = new List<Vector3>();
-        List<Node2> track_Node = new List<Node2>();
+        //List<Node2> track_Node = new List<Node2>();
 
-    public PurePursuit(Node2 current, List<Vector3> my_path)
+    public PurePursuit( List<Vector3> my_path)
         {
-            current.rear_x = (float)(current.x - ((axlesize / 2) * Math.Cos(current.theta)));
-            current.rear_z = (float)(current.z - ((axlesize / 2) * Math.Sin(current.theta)));
-            this.current = current;
             this.my_path = my_path;
-            track_Node.Add(current);
  
         }
 
-        public List<Node2> PurePursuitA()
+
+        public Node2 PurePursuitA(Node2 current)
         {
+            //set the current node
+            current.rear_x = (float)(current.x - ((axlesize / 2) * Math.Cos(current.theta)));
+            current.rear_z = (float)(current.z - ((axlesize / 2) * Math.Sin(current.theta)));
+            this.current = current;
+            //track_Node.Add(current);
+
             //speed (m/s)
-            float tager_speed = 10 / 3.6f;
-            float time = 100;  // max simulation time
+            float tager_speed = 1.8f / 3.6f;
+            //float time = 100;  // max simulation time
 
             ind = Calc_Target_Index(current, my_path);
 
-            while (time > 0 && ind< my_path.Count)
-            {
-                //Calculate control input
-                float ai = Pcontrol(tager_speed, current.v);
-                float di = PurePursuitControl(current, my_path, ind);
+            float ai = Pcontrol(tager_speed, current.v);
+            float di = PurePursuitControl(current, my_path, ind);
+            current = Update(current, ai, di);
+            return current;
+            /* while (time > 0 && ind< my_path.Count)
+             {
+                 //Calculate control input
+                 float ai = Pcontrol(tager_speed, current.v);
+                 float di = PurePursuitControl(current, my_path, ind);
 
-                //Debug.Log("control input ready  : "+ai+"and"+di);
-                current = Update(current, ai, di);
-                track_Node.Add(current);
+                 //Debug.Log("control input ready  : "+ai+"and"+di);
+                 current = Update(current, ai, di);
+                 track_Node.Add(current);
 
-                time = time -timeslot;
-
-            }
-            return track_Node;
+                 time = time -timeslot;
+                 if (ind == my_path.Count)
+                     break;
+             }
+             return track_Node;
+            */
         }
 
         public Node2 Update(Node2 current,float vt,float delta)

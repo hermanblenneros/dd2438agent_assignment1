@@ -18,13 +18,21 @@ namespace UnityStandardAssets.Vehicles.Car
         public float speedchange = 0;
         public bool hasnext = false;
 
-        List<Node2> track_Node = new List<Node2>();
+        PurePursuit purepursuit;
+        Node2 track_Node = null;
+       // List<Node2> track_result = new List<Node2>();
+
+        public Vector3 target_velocity;
+        Vector3 old_target_pos;
+        Vector3 desired_velocity;
+
+        public float k_p = 2f;
+        public float k_d = 0.5f;
 
         private void Start()
         {
             // Get the car controller
             m_Car = GetComponent<CarController>();
-
             // Get the terrain manager
             terrain_manager = terrain_manager_game_object.GetComponent<TerrainManager>();
 
@@ -67,60 +75,74 @@ namespace UnityStandardAssets.Vehicles.Car
         {
             // Execute your path here
             // ...
-            if(track_Node.Count == 0 )
+            if(track_Node == null )
             {
-                
-                Debug.Log("Track start!!!: " + m_Car.CurrentSpeed);
+                //Debug.Log("Track start!!!: " + m_Car.CurrentSpeed);
                 Node2 start = new Node2(start_pos.x, start_pos.z,0,0 ,(float)Math.PI / 2, m_Car.CurrentSpeed);
-                PurePursuit pp = new PurePursuit(start, my_path);
-                track_Node = pp.PurePursuitA();
-                
-                //draw the blue line for tracking path
-                List<Vector3> track_path = new List<Vector3>();
+                purepursuit = new PurePursuit(my_path);
+                track_Node = purepursuit.PurePursuitA(start);
+              
+                // keep track of target position and velocity
+                Vector3 target_position = new Vector3(track_Node.x, 0, track_Node.z);
+                Vector3 target_velocity = (target_position - start_pos) / Time.fixedDeltaTime;
+                old_target_pos = target_position;
+
+                // a PD-controller to get desired velocity
+                Vector3 my_velocity = new Vector3(track_Node.v * (float)Math.Cos(track_Node.theta), 0, track_Node.v * (float)Math.Sin(track_Node.theta));
+                Vector3 position_error = target_position - transform.position;
+                Vector3 velocity_error = target_velocity - my_velocity;
+                Vector3 desired_acceleration = k_p * position_error + k_d * velocity_error;
+                //Vector3 desired_acceleration = new Vector3(0,0,0);
+
+                float steering = Vector3.Dot(desired_acceleration, transform.right);
+                float acceleration = Vector3.Dot(desired_acceleration, transform.forward);
+
+                // this is how you control the car
+                Debug.Log("Steering:" + steering + " Acceleration:" + acceleration);
+                m_Car.Move(steering, acceleration, acceleration, 0f);
+
+                /*
+               //draw the yellow line for tracking path
+               List<Vector3> track_path = new List<Vector3>();
                 foreach (Node2 one in track_Node)
-                {
-                    Vector3 waypoint = new Vector3(one.x, 0, one.z);
-                    track_path.Add(waypoint);
-                }
-
-                Vector3 old_wp = start_pos;
-                foreach (var wp in track_path)
-                {
-                    Debug.DrawLine(old_wp, wp, Color.yellow, 100f);
-                    old_wp = wp;
-                }
-
-               // Debug.Log("Track node size: " + track_Node.Count);
-
+               {
+                   Vector3 waypoint = new Vector3(one.x, 0, one.z);
+                   track_path.Add(waypoint);
+               }
+               Vector3 old_wp = start_pos;
+               foreach (var wp in track_path)
+               {
+                   Debug.DrawLine(old_wp, wp, Color.yellow, 100f);
+                   old_wp = wp;
+               }
+               */
             }
             else
             {
-               // Debug.Log("Track node size: " + track_Node.Count);
+                Node2 now = new Node2(transform.position.x, transform.position.z, 0, 0, m_Car.CurrentSteerAngle, m_Car.CurrentSpeed);
+                track_Node = purepursuit.PurePursuitA(track_Node);
+                Vector3 target_position = new Vector3(track_Node.x, 0, track_Node.z);
+                Vector3 target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
+                old_target_pos = target_position;
+
+                // a PD-controller to get desired velocity
+                Vector3 my_velocity = new Vector3(track_Node.v * (float)Math.Cos(track_Node.theta), 0, track_Node.v * (float)Math.Sin(track_Node.theta));
+                Vector3 position_error = target_position - transform.position;
+                Vector3 velocity_error = target_velocity - my_velocity;
+                Vector3 desired_acceleration = k_p * position_error + k_d * velocity_error;
+
+                float steering = Vector3.Dot(desired_acceleration, transform.right);
+                float acceleration = Vector3.Dot(desired_acceleration, transform.forward);
+
+                Debug.DrawLine(target_position, target_position + target_velocity, Color.red);
+                Debug.DrawLine(transform.position, transform.position + my_velocity, Color.blue);
+                Debug.DrawLine(transform.position, transform.position + desired_acceleration, Color.black);
+
+                // this is how you control the car
+                Debug.Log("Steering:" + steering + " Acceleration:" + acceleration);
+                m_Car.Move(steering, acceleration, acceleration, 0f);
+            
             }
-
-            //m_Car.Move(1f, 1f, 1f, 0f);
-            /*// this is how you access information about the terrain from the map
-            int i = terrain_manager.myInfo.get_i_index(transform.position.x);
-            int j = terrain_manager.myInfo.get_j_index(transform.position.z);
-            float grid_center_x = terrain_manager.myInfo.get_x_pos(i);
-            float grid_center_z = terrain_manager.myInfo.get_z_pos(j);
-
-            Debug.DrawLine(transform.position, new Vector3(grid_center_x, 0f, grid_center_z));
-
-            // this is how you access information about the terrain from a simulated laser range finder
-            RaycastHit hit;
-            float maxRange = 50f;
-            if (Physics.Raycast(transform.position + transform.up, transform.TransformDirection(Vector3.forward), out hit, maxRange))
-            {
-                Vector3 closestObstacleInFront = transform.TransformDirection(Vector3.forward) * hit.distance;
-                Debug.DrawRay(transform.position, closestObstacleInFront, Color.yellow);
-                Debug.Log("Did Hit");
-            }
-
-
-            // this is how you control the car
-            m_Car.Move(1f, 1f, 1f, 0f);
-            */
 
 
         }
