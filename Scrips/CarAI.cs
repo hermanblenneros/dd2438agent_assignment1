@@ -8,33 +8,51 @@ namespace UnityStandardAssets.Vehicles.Car
 {
     [RequireComponent(typeof(CarController))]
     public class CarAI : MonoBehaviour
-    {
-        private CarController m_Car; // the car controller we want to use
+    {   
+        // The car controller
+        private CarController m_Car;
+
+        // The rigid body of the car
+        Rigidbody my_rigidbody;
+
+        // The terrain manager object
         public GameObject terrain_manager_game_object;
+
+        // The terrain manager
         TerrainManager terrain_manager;
-        List<Vector3> my_path = new List<Vector3>();
+
+        // Our planned path
+        List<Node> my_path = new List<Node>();
+
+        // The start position
         Vector3 start_pos;
+
+        // The goal position
         Vector3 goal_pos;
-        public float speedchange = 0;
-        public bool hasnext = false;
 
-        PurePursuit purepursuit;
-        Node2 track_Node = null;
-       // List<Node2> track_result = new List<Node2>();
-
+        // A target velocity
         public Vector3 target_velocity;
-        Vector3 old_target_pos;
-        Vector3 desired_velocity;
 
+        public Node target;
+
+        public Node aheadOfTarget;
+
+        // Proportional gain to PD-controller
         public float k_p = 2f;
-        public float k_d = 0.5f;
 
+        // Derivative gain to PD-controller
+        public float k_d = 0.5f;
+    
         private void Start()
         {
             // Get the car controller
             m_Car = GetComponent<CarController>();
+
             // Get the terrain manager
             terrain_manager = terrain_manager_game_object.GetComponent<TerrainManager>();
+
+            // Get the rigid body
+            my_rigidbody = GetComponent<Rigidbody>();
 
             // Get start and goal position
             start_pos = terrain_manager.myInfo.start_pos;
@@ -44,29 +62,27 @@ namespace UnityStandardAssets.Vehicles.Car
             Mapper mapper = new Mapper(terrain_manager);
             float[,] obstacle_map = mapper.configure_obstacle_map(terrain_manager);
 
-            // Create planner and compute path
+            // Create planner and find path
             Planner planner = new Planner();
-
             Node goalNode = planner.HybridAStar(terrain_manager, m_Car, start_pos, (float)Math.PI/2, goal_pos, obstacle_map, 10000);
             
-            my_path.Add(goal_pos);
-            
+            // Construct path
+            my_path.Add(goalNode);
             Node parent = goalNode.parent;
-
             while(parent != null)
-            {   
-                Vector3 waypoint = new Vector3(parent.x, 0, parent.z);
-                my_path.Add(waypoint);
+            {  
+                my_path.Add(parent);
                 parent = parent.parent;
             }
-            my_path.Add(start_pos);
+            
             my_path.Reverse();
 
-            // Plot your path to see if it makes sense
+            // Plot path
             Vector3 old_wp = start_pos;
-            foreach (var wp in my_path)
-            {
-                Debug.DrawLine(old_wp, wp, Color.red, 100f);
+            foreach (Node n in my_path)
+            {   
+                Vector3 wp = new Vector3(n.x, 0, n.z);
+                Debug.DrawLine(old_wp, wp, Color.yellow, 100f);
                 old_wp = wp;
             }
         }
@@ -74,77 +90,64 @@ namespace UnityStandardAssets.Vehicles.Car
         private void FixedUpdate()
         {
             // Execute your path here
-            // ...
-            if(track_Node == null )
-            {
-                //Debug.Log("Track start!!!: " + m_Car.CurrentSpeed);
-                Node2 start = new Node2(start_pos.x, start_pos.z,0,0 ,(float)Math.PI / 2, m_Car.CurrentSpeed);
-                purepursuit = new PurePursuit(my_path);
-                track_Node = purepursuit.PurePursuitA(start);
-              
-                // keep track of target position and velocity
-                Vector3 target_position = new Vector3(track_Node.x, 0, track_Node.z);
-                Vector3 target_velocity = (target_position - start_pos) / Time.fixedDeltaTime;
-                old_target_pos = target_position;
+            // Get waypoint
+            // Find closest point on path
 
-                // a PD-controller to get desired velocity
-                Vector3 my_velocity = new Vector3(track_Node.v * (float)Math.Cos(track_Node.theta), 0, track_Node.v * (float)Math.Sin(track_Node.theta));
-                Vector3 position_error = target_position - transform.position;
-                Vector3 velocity_error = target_velocity - my_velocity;
-                Vector3 desired_acceleration = k_p * position_error + k_d * velocity_error;
-                //Vector3 desired_acceleration = new Vector3(0,0,0);
+            float minDist = 100;
+            int minDistIdx = 0;
+            int Idx = 0;
+            foreach(Node n in my_path)
+            {   
+                Vector3 pos = new Vector3(n.x, 0, n.z);
+                Vector3 difference = transform.position - pos;
+                float dist = (float)Math.Sqrt( Math.Pow(difference.x,2) + Math.Pow(difference.z, 2) );
 
-                float steering = Vector3.Dot(desired_acceleration, transform.right);
-                float acceleration = Vector3.Dot(desired_acceleration, transform.forward);
+                if(dist < minDist)
+                {
+                    minDist = dist;
+                    minDistIdx = Idx;
+                }
 
-                // this is how you control the car
-                Debug.Log("Steering:" + steering + " Acceleration:" + acceleration);
-                m_Car.Move(steering, acceleration, acceleration, 0f);
-
-                /*
-               //draw the yellow line for tracking path
-               List<Vector3> track_path = new List<Vector3>();
-                foreach (Node2 one in track_Node)
-               {
-                   Vector3 waypoint = new Vector3(one.x, 0, one.z);
-                   track_path.Add(waypoint);
-               }
-               Vector3 old_wp = start_pos;
-               foreach (var wp in track_path)
-               {
-                   Debug.DrawLine(old_wp, wp, Color.yellow, 100f);
-                   old_wp = wp;
-               }
-               */
+                Idx += 1;
             }
-            else
+
+            // Move along the path a distance equal to the lookahead
+            int lookahead = 4; // Lookahead in meters equals 4 * sqrt(2) = 5
+
+            // Break condition
+            try
             {
-                Node2 now = new Node2(transform.position.x, transform.position.z, 0, 0, m_Car.CurrentSteerAngle, m_Car.CurrentSpeed);
-                track_Node = purepursuit.PurePursuitA(track_Node);
-                Vector3 target_position = new Vector3(track_Node.x, 0, track_Node.z);
-                Vector3 target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
-                old_target_pos = target_position;
-
-                // a PD-controller to get desired velocity
-                Vector3 my_velocity = new Vector3(track_Node.v * (float)Math.Cos(track_Node.theta), 0, track_Node.v * (float)Math.Sin(track_Node.theta));
-                Vector3 position_error = target_position - transform.position;
-                Vector3 velocity_error = target_velocity - my_velocity;
-                Vector3 desired_acceleration = k_p * position_error + k_d * velocity_error;
-
-                float steering = Vector3.Dot(desired_acceleration, transform.right);
-                float acceleration = Vector3.Dot(desired_acceleration, transform.forward);
-
-                Debug.DrawLine(target_position, target_position + target_velocity, Color.red);
-                Debug.DrawLine(transform.position, transform.position + my_velocity, Color.blue);
-                Debug.DrawLine(transform.position, transform.position + desired_acceleration, Color.black);
-
-                // this is how you control the car
-                Debug.Log("Steering:" + steering + " Acceleration:" + acceleration);
-                m_Car.Move(steering, acceleration, acceleration, 0f);
+                target = my_path[minDistIdx + lookahead];
+                aheadOfTarget = my_path[minDistIdx + lookahead + 1];
+            }
+            catch(ArgumentOutOfRangeException e)
+            {
+                Debug.Log("Congratz! You have reached the end!");
+            }
             
-            }
+            // Keep track of target position and velocity
+            float speed = 1;
+            Vector3 target_position = new Vector3(target.x, 0, target.z);
+            Vector3 aheadOfTarget_pos = new Vector3(aheadOfTarget.x, 0, aheadOfTarget.z);
+            target_velocity = speed*(aheadOfTarget_pos-target_position); // Velocity will be 5 * sqrt(2)
+            Debug.Log("Target position: " + target_position);
+            Debug.Log("Target position + target velocity: " + (target_position + target_velocity));
 
+            // a PD-controller to get desired velocity
+            Vector3 position_error = target_position - transform.position;
+            Vector3 velocity_error = target_velocity - my_rigidbody.velocity;
+            Vector3 desired_acceleration = k_p * position_error + k_d * velocity_error;
 
+            float steering = Vector3.Dot(desired_acceleration, transform.right);
+            float acceleration = Vector3.Dot(desired_acceleration, transform.forward);
+
+            Debug.DrawLine(target_position, target_position + target_velocity, Color.red);
+            Debug.DrawLine(transform.position, transform.position + my_rigidbody.velocity, Color.blue);
+            Debug.DrawLine(transform.position, transform.position + desired_acceleration, Color.black);
+
+            // this is how you control the car
+            Debug.Log("Steering:" + steering + " Acceleration:" + acceleration);
+            m_Car.Move(steering, acceleration, acceleration, 0f);
         }
     }
 }

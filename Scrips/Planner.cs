@@ -120,9 +120,9 @@ namespace UnityStandardAssets.Vehicles.Car
                     {
                         if(obstacle_map[(int)Math.Round((sucessor.x - x_low) / x_res),(int)Math.Round((sucessor.z - z_low) / z_res)] == 1)
                         {   
-                            draw1 = new Vector3(n.x, 0, n.z);
-                            draw2 = new Vector3(sucessor.x, 0, sucessor.z);
-                            Debug.DrawLine(draw1, draw2, Color.yellow, 100f);
+                            //draw1 = new Vector3(n.x, 0, n.z);
+                            //draw2 = new Vector3(sucessor.x, 0, sucessor.z);
+                            //Debug.DrawLine(draw1, draw2, Color.yellow, 100f);
                             continue;
                         }
                     }
@@ -139,7 +139,7 @@ namespace UnityStandardAssets.Vehicles.Car
                     // Check if the sucessor is expanded
                     if (!closedSet.ContainsKey(sucessor.gridIdx))
                     {   
-                        float steeringPenalty = 1/2*(1 - steerAngle/maxSteerAngle);
+                        float steeringPenalty = (1 - steerAngle/maxSteerAngle);
                         sucessor.g = n.g + (float)Math.Sqrt(2) + steeringPenalty;
                         bool flag = false;
                         
@@ -166,9 +166,9 @@ namespace UnityStandardAssets.Vehicles.Car
                             openSet.Enqueue(sucessor, sucessor.f);
 
                             // Drawing some stuff
-                            draw1 = new Vector3(n.x, 0, n.z);
-                            draw2 = new Vector3(sucessor.x, 0, sucessor.z);
-                            Debug.DrawLine(draw1, draw2, Color.blue, 100f);
+                            //draw1 = new Vector3(n.x, 0, n.z);
+                            //draw2 = new Vector3(sucessor.x, 0, sucessor.z);
+                            //Debug.DrawLine(draw1, draw2, Color.blue, 100f);
 
                             // Push node onto the set of expanded nodes
                             closedSet.Add(sucessor.gridIdx, sucessor);
