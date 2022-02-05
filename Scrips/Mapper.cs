@@ -13,6 +13,8 @@ public class Mapper
     public float[,] configure_obstacle_map(TerrainManager terrain_manager)
     {   
         float[,] obstacle_map = terrain_manager.myInfo.traversability;
+        int xSize = obstacle_map.GetLength(0);
+        int zSize = obstacle_map.GetLength(1);
         float xMin = terrain_manager.myInfo.x_low;
         float xMax = terrain_manager.myInfo.x_high;
         int xNum = terrain_manager.myInfo.x_N;
@@ -20,12 +22,13 @@ public class Mapper
         float zMax = terrain_manager.myInfo.z_high;
         int zNum = terrain_manager.myInfo.z_N;
 
-        float xRes = (xMax - xMin)/xNum;
-        float zRes = (zMax - zMin)/zNum;
+        float xRes = (float)Math.Ceiling((xMax - xMin)/xNum);
+        float zRes = (float)Math.Ceiling((zMax - zMin)/zNum);
 
-        float[,] intermediate_map1 = new float[(int)(xMax-xMin), zNum];
-        float[,] intermediate_map2 = new float[(int)(xMax-xMin), (int)(zMax-zMin)];
-        float[,] new_obstacle_map = new float[(int)(xMax-xMin), (int)(zMax-zMin)];
+        float[,] intermediate_map1 = new float[(int)(xSize*xRes), zNum];
+        float[,] intermediate_map2 = new float[(int)(xSize*xRes), (int)(zSize*zRes)];
+        float[,] intermediate_map3 = new float[(int)(xSize*xRes), (int)(zSize*zRes)];
+        float[,] new_obstacle_map = new float[(int)(xSize*xRes), (int)(zSize*zRes)];
 
         for(int i = 0; i < xNum; i++)
         {
@@ -43,7 +46,7 @@ public class Mapper
         {
             for(int j = 0; j < zRes; j++)
             {
-                for(int k = 0; k < (int)(xMax-xMin); k++)
+                for(int k = 0; k < (int)(xSize*xRes); k++)
                 {
                     float val = intermediate_map1[k,i];
                     intermediate_map2[k,j + (int)zRes*i] = val;
@@ -51,17 +54,30 @@ public class Mapper
             }
         }
 
-        for(int i = 1; i < (int)(xMax-xMin) - 1; i++)
+        for(int i = 1; i < (int)(xSize*xRes) - 1; i++)
         {
-            for(int j = 1; j < (int)(xMax-xMin) - 1; j++)
+            for(int j = 1; j < (int)(zSize*zRes) - 1; j++)
             {
                 float neighbours = intermediate_map2[i-1,j] + intermediate_map2[i-1,j-1] + intermediate_map2[i, j-1] + intermediate_map2[i+1,j-1] + intermediate_map2[i+1,j] + intermediate_map2[i+1,j+1] + intermediate_map2[i,j+1] + intermediate_map2[i-1, j+1];
+                if(neighbours >= 1)
+                {
+                    intermediate_map3[i,j] = 1;
+                }
+            }
+        }
+        
+        for(int i = 1; i < (int)(xSize*xRes) - 1; i++)
+        {
+            for(int j = 1; j < (int)(zSize*zRes) - 1; j++)
+            {
+                float neighbours = intermediate_map3[i-1,j] + intermediate_map3[i-1,j-1] + intermediate_map3[i, j-1] + intermediate_map3[i+1,j-1] + intermediate_map3[i+1,j] + intermediate_map3[i+1,j+1] + intermediate_map3[i,j+1] + intermediate_map3[i-1, j+1];
                 if(neighbours >= 1)
                 {
                     new_obstacle_map[i,j] = 1;
                 }
             }
         }
+        
         return new_obstacle_map;
     }
 }

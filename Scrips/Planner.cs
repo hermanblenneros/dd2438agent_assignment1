@@ -30,7 +30,6 @@ namespace UnityStandardAssets.Vehicles.Car
         private Node n;
         private Node sucessor;
         private float maxSteerAngle = 0;
-        private float[] key = new float[2];
 
         public Planner()
         {
@@ -121,9 +120,9 @@ namespace UnityStandardAssets.Vehicles.Car
                     {
                         if(obstacle_map[(int)Math.Round((sucessor.x - x_low) / x_res),(int)Math.Round((sucessor.z - z_low) / z_res)] == 1)
                         {   
-                            //draw1 = new Vector3(n.x, 0, n.z);
-                            //draw2 = new Vector3(sucessor.x, 0, sucessor.z);
-                            //Debug.DrawLine(draw1, draw2, Color.yellow, 100f);
+                            draw1 = new Vector3(n.x, 0, n.z);
+                            draw2 = new Vector3(sucessor.x, 0, sucessor.z);
+                            Debug.DrawLine(draw1, draw2, Color.yellow, 100f);
                             continue;
                         }
                     }
@@ -167,9 +166,9 @@ namespace UnityStandardAssets.Vehicles.Car
                             openSet.Enqueue(sucessor, sucessor.f);
 
                             // Drawing some stuff
-                            //draw1 = new Vector3(n.x, 0, n.z);
-                            //draw2 = new Vector3(sucessor.x, 0, sucessor.z);
-                            //Debug.DrawLine(draw1, draw2, Color.blue, 100f);
+                            draw1 = new Vector3(n.x, 0, n.z);
+                            draw2 = new Vector3(sucessor.x, 0, sucessor.z);
+                            Debug.DrawLine(draw1, draw2, Color.blue, 100f);
 
                             // Push node onto the set of expanded nodes
                             closedSet.Add(sucessor.gridIdx, sucessor);
