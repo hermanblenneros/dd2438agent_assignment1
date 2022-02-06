@@ -51,7 +51,7 @@ public class Mapper
                 for (int k = 0; k < zNum; k++)
                 {
                     float val = obstacle_map[i, k];
-                    intermediate_map1[(int)Math.Floor(xRes) * i, k] = val;
+                    intermediate_map1[(int)Math.Floor(xRes * i), k] = val;
                 }
             }
         }
@@ -76,7 +76,7 @@ public class Mapper
                 for (int k = 0; k < (int)(xSize * xRes); k++)
                 {
                     float val = intermediate_map1[k, i];
-                    intermediate_map2[k, (int)Math.Floor(zRes) * i] = val;
+                    intermediate_map2[k, (int)Math.Floor(zRes * i)] = val;
                 }
             }
         }
