@@ -13,22 +13,22 @@ public class Mapper
     public float[,] configure_obstacle_map(TerrainManager terrain_manager)
     {   
         float[,] obstacle_map = terrain_manager.myInfo.traversability;
-        int xSize = obstacle_map.GetLength(0);     //5//400
-        int zSize = obstacle_map.GetLength(1);      //4//400
+        int xSize = obstacle_map.GetLength(0);     
+        int zSize = obstacle_map.GetLength(1);      
         float xMin = terrain_manager.myInfo.x_low; 
         float xMax = terrain_manager.myInfo.x_high;
-        int xNum = terrain_manager.myInfo.x_N;      //5//400
+        int xNum = terrain_manager.myInfo.x_N;      
         float zMin = terrain_manager.myInfo.z_low;
         float zMax = terrain_manager.myInfo.z_high;
-        int zNum = terrain_manager.myInfo.z_N;       //4//400
+        int zNum = terrain_manager.myInfo.z_N;      
 
-        float xRes = (float)Math.Ceiling((xMax - xMin)/xNum);   //40//0.5
-        float zRes = (float)Math.Ceiling((zMax - zMin)/zNum);   //50//0.5
+        float xRes = (float)Math.Ceiling((xMax - xMin)/xNum);   
+        float zRes = (float)Math.Ceiling((zMax - zMin)/zNum);   
 
-        float[,] intermediate_map1 = new float[(int)(xSize*xRes), zNum];  //5*40 *  4=800//200 *400
-        float[,] intermediate_map2 = new float[(int)(xSize*xRes), (int)(zSize*zRes)]; //5*40 * 4*50=40000  // 200* 200
-        float[,] intermediate_map3 = new float[(int)(xSize*xRes), (int)(zSize*zRes)];  //40000 
-        float[,] new_obstacle_map = new float[(int)(xSize*xRes), (int)(zSize*zRes)];  //40000
+        float[,] intermediate_map1 = new float[(int)(xSize*xRes), zNum]; 
+        float[,] intermediate_map2 = new float[(int)(xSize*xRes), (int)(zSize*zRes)]; 
+        float[,] intermediate_map3 = new float[(int)(xSize*xRes), (int)(zSize*zRes)];  
+        float[,] new_obstacle_map = new float[(int)(xSize*xRes), (int)(zSize*zRes)];  
 
         if (xRes >= 1)
         {
