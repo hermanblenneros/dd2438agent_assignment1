@@ -30,11 +30,7 @@ namespace UnityStandardAssets.Vehicles.Car
         private Node n;
         private Node sucessor;
         private float maxSteerAngle = 0;
-
-        public Planner()
-        {
-            ;
-        }
+        private float[] orentations = new float[] { 0, (float)Math.PI / 4, (float)Math.PI / 2, (float)Math.PI * 3 / 4, (float)Math.PI, -(float)Math.PI * 3 / 4, -(float)Math.PI / 2, -(float)Math.PI / 4 };
 
         private float calculateEuclidean(float x1, float z1, float x2, float z2)
         {
@@ -83,6 +79,7 @@ namespace UnityStandardAssets.Vehicles.Car
 
             // Creating the closed set (Dictionary for book keeping of expanded nodes)
             Dictionary<float,Node> closedSet = new Dictionary<float, Node>();
+            MultiDictionary<float, float, Node> closedSet2 = new MultiDictionary<float, float, Node>();
 
             // Starting the algorithm
             openSet.Enqueue(startNode, startNode.f);
@@ -122,7 +119,11 @@ namespace UnityStandardAssets.Vehicles.Car
                         {   
                             draw1 = new Vector3(n.x, 0, n.z);
                             draw2 = new Vector3(sucessor.x, 0, sucessor.z);
+<<<<<<< HEAD
                             Debug.DrawLine(draw1, draw2, Color.yellow, 2f);
+=======
+                            Debug.DrawLine(draw1, draw2, Color.yellow, 100f);
+>>>>>>> d9a05ae5623b2ed1fce3828fb5956a93e8d3bd53
                             continue;
                         }
                     }
@@ -134,6 +135,7 @@ namespace UnityStandardAssets.Vehicles.Car
                         Debug.Log("z index: " + (int)Math.Round((sucessor.z - z_low) / 1));
                         Debug.Log(e);
                         return null;
+<<<<<<< HEAD
                     }              
                     
                     // Check if the sucessor is expanded
@@ -156,24 +158,73 @@ namespace UnityStandardAssets.Vehicles.Car
                                     openSet.Remove(one);
                                     break;
                                 }
+=======
+                    }
+
+                    // Check if the sucessor is expanded  !closedSet.ContainsKey(sucessor.gridIdx)
+                    try 
+                    {
+                        float orentation = (float)Math.PI;
+                        foreach (float direc in orentations)
+                        {
+                            if ((float)Math.Abs(sucessor.theta - direc)<=(float)Math.PI/8)
+                            {
+                                orentation = direc;
+                                break;
+>>>>>>> d9a05ae5623b2ed1fce3828fb5956a93e8d3bd53
                             }
                         }
-                        
-                        if(!openSet.Contains(sucessor) || flag)
-                        {   
-                            // Add the sucessor to the open list if it is not there or it has lower cost than a currently existing node in the same cell
-                            sucessor.h = calculateEuclidean(sucessor.x, sucessor.z, goalNode.x, goalNode.z);
-                            sucessor.f = sucessor.g + sucessor.h;
-                            openSet.Enqueue(sucessor, sucessor.f);
+                        //if one node per cell we use !closedSet.ContainsKey(sucessor.gridIdx) 
+                        if (closedSet2.Get(sucessor.gridIdx, orentation) == null)
+                        {
+                      
+                            float steeringPenalty = (1 - steerAngle / maxSteerAngle);
+                            sucessor.g = n.g + (float)Math.Sqrt(2) + steeringPenalty;
+                            bool flag = false;
 
+<<<<<<< HEAD
                             // Drawing some stuff
                             draw1 = new Vector3(n.x, 0, n.z);
                             draw2 = new Vector3(sucessor.x, 0, sucessor.z);
                             Debug.DrawLine(draw1, draw2, Color.blue, 1f);
+=======
+                            foreach (Node one in openSet)
+                            {
+                                // Check if the sucessor has a neighbour in the same cell
+                                if (one.gridIdx == sucessor.gridIdx && one.theta == sucessor.theta)
+                                {
+                                    // Remove the neighbour from the cell if the sucessor has lower cost
+                                    if (sucessor.g < one.g)
+                                    {
+                                        flag = true;
+                                        openSet.Remove(one);
+                                        break;
+                                    }
+                                }
+                            }
+>>>>>>> d9a05ae5623b2ed1fce3828fb5956a93e8d3bd53
 
-                            // Push node onto the set of expanded nodes
-                            closedSet.Add(sucessor.gridIdx, sucessor);
+                            if (!openSet.Contains(sucessor) || flag)
+                            {
+                                // Add the sucessor to the open list if it is not there or it has lower cost than a currently existing node in the same cell
+                                sucessor.h = calculateEuclidean(sucessor.x, sucessor.z, goalNode.x, goalNode.z);
+                                sucessor.f = sucessor.g + sucessor.h;
+                                openSet.Enqueue(sucessor, sucessor.f);
+
+                                // Drawing some stuff
+                                draw1 = new Vector3(n.x, 0, n.z);
+                                draw2 = new Vector3(sucessor.x, 0, sucessor.z);
+                                Debug.DrawLine(draw1, draw2, Color.blue, 100f);
+
+                                // Push node onto the set of expanded nodes
+                                //closedSet.Add(sucessor.gridIdx, sucessor);
+                                closedSet2.Set(sucessor.gridIdx, orentation, sucessor);
+                            }
                         }
+                    }
+                    catch(Exception e)
+                    {
+                        Debug.Log(e);
                     }
                 }
             }
@@ -205,4 +256,40 @@ namespace UnityStandardAssets.Vehicles.Car
             this.parent = parent;
         }
     }
-}
+
+    public class MultiDictionary<Key1, Key2, Value>
+    {
+
+        Dictionary<Key1, Dictionary<Key2, Value>> mDict1 = new Dictionary<Key1, Dictionary<Key2, Value>>();
+
+
+        public void Set(Key1 key1, Key2 key2, Value value)
+        {
+            if (mDict1.ContainsKey(key1))
+            {
+                var dict2 = mDict1[key1];
+                if (dict2.ContainsKey(key2))
+                    dict2[key2] = value;
+                else
+                    dict2.Add(key2, value);
+            }
+            else
+            {
+                var dict2 = new Dictionary<Key2, Value>();
+                dict2.Add(key2, value);
+                mDict1.Add(key1, dict2);
+            }
+        }
+
+        public Value Get(Key1 key1, Key2 key2, Value defaultValue = default(Value))
+        {
+            if (mDict1.ContainsKey(key1))
+            {
+                var dict2 = mDict1[key1];
+                if (dict2.ContainsKey(key2))
+                    return dict2[key2];
+            }
+            return defaultValue;
+        }
+    }
+    }
