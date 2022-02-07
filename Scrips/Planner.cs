@@ -195,6 +195,153 @@ namespace UnityStandardAssets.Vehicles.Car
             Debug.Log("No path found!");
             return null;
         }
+
+        public Node AStar(TerrainManager terrain_manager, DroneController m_Drone, Vector3 start_pos, Vector3 goal_pos, float[,] obstacle_map, int MAX_SIZE = 10000)
+        {
+            Debug.Log("In AStar");
+
+            // Getting map info
+            x_size = obstacle_map.GetLength(0);
+            z_size = obstacle_map.GetLength(1);
+            x_low = terrain_manager.myInfo.x_low;
+            x_high = terrain_manager.myInfo.x_high;
+            z_low = terrain_manager.myInfo.z_low;
+            z_high = terrain_manager.myInfo.z_high;
+            x_res = (x_high - x_low) / x_size;
+            z_res = (z_high - z_low) / z_size;
+            arc = (float)Math.Sqrt(Math.Pow(x_res, 2) + Math.Pow(z_res, 2));
+
+            // Create the startnode
+            startNode = new Node(start_pos.x, start_pos.z, 0, calculateGridIndex(start_pos.x, start_pos.z), 0, 0, 0, null);
+            Debug.Log(calculateGridIndex(start_pos.x, start_pos.z));
+
+            // Create the goalnode
+            goalNode = new Node(goal_pos.x, goal_pos.z, 0, calculateGridIndex(goal_pos.x, goal_pos.z), 0, 0, 0, null);
+            Debug.Log(calculateGridIndex(goal_pos.x, goal_pos.z));
+
+            // Creating the open set (Priority queue for guided search of map)
+            FastPriorityQueue<Node> openSet = new FastPriorityQueue<Node>(MAX_SIZE);
+
+            // Creating the closed set (Dictionary for book keeping of expanded nodes)
+            Dictionary<float, Node> closedSet = new Dictionary<float, Node>();
+            MultiDictionary<float, float, Node> closedSet2 = new MultiDictionary<float, float, Node>();
+
+            // Starting the algorithm
+            openSet.Enqueue(startNode, startNode.f);
+
+            //Explore new nodes
+            while (openSet.Count > 0)
+            {
+                //If the nodes waiting for expand are too much, we fail to find the path
+                if (openSet.Count >= MAX_SIZE)
+                {
+                    Debug.Log("Open set is full");
+                    return null;
+                }
+
+                // Getting node with highest priority from open set
+                n = openSet.Dequeue();
+
+                // If the node is in the vicinity of the goal, assign it as parent to the goalnode and return the goalnode
+                if (calculateEuclidean(n.x, n.z, goalNode.x, goalNode.z) < 2)
+                {
+                    Node finalNode = new Node(goalNode.x, goalNode.z, goalNode.theta, calculateGridIndex(goalNode.x, goalNode.z), 0, 0, 0, n);
+                    goalNode = finalNode;
+                    return goalNode;
+                }
+
+                // Expand node
+                foreach (float Angle in orentations)
+                {
+                    float actualAngle = n.theta + Angle;
+                    float dx = (float)Math.Cos(actualAngle) * x_res;
+                    float dz = (float)Math.Sin(actualAngle) * z_res;
+                    sucessor = new Node(n.x + dx, n.z + dz, actualAngle, calculateGridIndex(n.x + dx, n.z + dz), 0, 0, 0, n);
+
+                    // Check traversability
+                    try
+                    {
+                        if (obstacle_map[(int)Math.Round((sucessor.x - x_low) / x_res), (int)Math.Round((sucessor.z - z_low) / z_res)] == 1)
+                        {
+                            draw1 = new Vector3(n.x, 0, n.z);
+                            draw2 = new Vector3(sucessor.x, 0, sucessor.z);
+                            Debug.DrawLine(draw1, draw2, Color.yellow, 100f);
+                            continue;
+                        }
+                    }
+                    catch (IndexOutOfRangeException e)
+                    {
+                        Debug.Log("x: " + (sucessor.x - x_low) / 1);
+                        Debug.Log("x index: " + (int)Math.Round((sucessor.x - x_low) / 1));
+                        Debug.Log("z: " + (sucessor.z - z_low) / 1);
+                        Debug.Log("z index: " + (int)Math.Round((sucessor.z - z_low) / 1));
+                        Debug.Log(e);
+                        return null;
+                    }
+
+                    // Check if the sucessor is expanded  
+                    try
+                    {
+                        float orentation = (float)Math.PI;
+                        foreach (float direc in orentations)
+                        {
+                            if ((float)Math.Abs(sucessor.theta - direc) <= (float)Math.PI / 8)
+                            {
+                                orentation = direc;
+                                break;
+                            }
+                        }
+                        //Allow only one node per cell If allow many nodes per cell we use !closedSet.ContainsKey(sucessor.gridIdx) closedSet2.Get(sucessor.gridIdx, orentation) == null
+                        if (!closedSet.ContainsKey(sucessor.gridIdx))
+                        {
+
+                            //float steeringPenalty = (1 - steerAngle / maxSteerAngle);
+                            sucessor.g = n.g + (float)Math.Sqrt(2);
+                            bool flag = false;
+
+                            //Check and update the lower cost node in same cell
+                            foreach (Node one in openSet)
+                            {
+                                // Check if the sucessor has a neighbour in the same cell
+                                if (one.gridIdx == sucessor.gridIdx && one.theta == sucessor.theta)
+                                {
+                                    // Remove the neighbour from the cell if the sucessor has lower cost
+                                    if (sucessor.g < one.g)
+                                    {
+                                        flag = true;
+                                        openSet.Remove(one);
+                                        break;
+                                    }
+                                }
+                            }
+
+                            //Add the new qualified sucessor node to closeSet
+                            if (!openSet.Contains(sucessor) || flag)
+                            {
+                                // Add the sucessor to the open list if it is not there or it has lower cost than a currently existing node in the same cell
+                                sucessor.h = calculateEuclidean(sucessor.x, sucessor.z, goalNode.x, goalNode.z);
+                                sucessor.f = sucessor.g + sucessor.h;
+                                openSet.Enqueue(sucessor, sucessor.f);
+
+                                // Drawing some stuff
+                                draw1 = new Vector3(n.x, 0, n.z);
+                                draw2 = new Vector3(sucessor.x, 0, sucessor.z);
+                                Debug.DrawLine(draw1, draw2, Color.blue, 100f);
+
+                                // Push node onto the set of expanded nodes
+                                closedSet.Add(sucessor.gridIdx, sucessor);
+                            }
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.Log(e);
+                    }
+                }
+            }
+            Debug.Log("No path found!");
+            return null;
+        }
     }
 
     public class Node : FastPriorityQueueNode
