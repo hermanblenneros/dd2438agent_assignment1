@@ -48,7 +48,7 @@ namespace UnityStandardAssets.Vehicles.Car
 
         public Node HybridAStar(TerrainManager terrain_manager, CarController m_Car, Vector3 start_pos, float start_angle, Vector3 goal_pos, float[,] obstacle_map, int MAX_SIZE = 10000)
         {   
-            //Debug.Log("In HybridAStar");
+            Debug.Log("In HybridAStar");
             
             // Control list
             maxSteerAngle = m_Car.m_MaximumSteerAngle*(float)Math.PI/180;
@@ -68,11 +68,11 @@ namespace UnityStandardAssets.Vehicles.Car
 
             // Create the startnode
             startNode = new Node(start_pos.x, start_pos.z, start_angle, calculateGridIndex(start_pos.x, start_pos.z), 0, 0, 0, null);
-            //Debug.Log(calculateGridIndex(start_pos.x, start_pos.z));
+            Debug.Log(calculateGridIndex(start_pos.x, start_pos.z));
 
             // Create the goalnode
             goalNode = new Node(goal_pos.x, goal_pos.z, 0, calculateGridIndex(goal_pos.x, goal_pos.z), 0, 0, 0, null);
-            //Debug.Log(calculateGridIndex(goal_pos.x, goal_pos.z));
+            Debug.Log(calculateGridIndex(goal_pos.x, goal_pos.z));
 
             // Creating the open set (Priority queue for guided search of map)
             FastPriorityQueue<Node> openSet = new FastPriorityQueue<Node>(MAX_SIZE);
@@ -119,7 +119,7 @@ namespace UnityStandardAssets.Vehicles.Car
                         {   
                             draw1 = new Vector3(n.x, 0, n.z);
                             draw2 = new Vector3(sucessor.x, 0, sucessor.z);
-                            Debug.DrawLine(draw1, draw2, Color.yellow, 2f);
+                            Debug.DrawLine(draw1, draw2, Color.yellow, 100f);
                             continue;
                         }
                     }
