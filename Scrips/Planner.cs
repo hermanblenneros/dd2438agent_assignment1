@@ -119,11 +119,7 @@ namespace UnityStandardAssets.Vehicles.Car
                         {   
                             draw1 = new Vector3(n.x, 0, n.z);
                             draw2 = new Vector3(sucessor.x, 0, sucessor.z);
-<<<<<<< HEAD
                             Debug.DrawLine(draw1, draw2, Color.yellow, 2f);
-=======
-                            Debug.DrawLine(draw1, draw2, Color.yellow, 100f);
->>>>>>> d9a05ae5623b2ed1fce3828fb5956a93e8d3bd53
                             continue;
                         }
                     }
@@ -135,30 +131,6 @@ namespace UnityStandardAssets.Vehicles.Car
                         Debug.Log("z index: " + (int)Math.Round((sucessor.z - z_low) / 1));
                         Debug.Log(e);
                         return null;
-<<<<<<< HEAD
-                    }              
-                    
-                    // Check if the sucessor is expanded
-                    if (!closedSet.ContainsKey(sucessor.gridIdx))
-                    {   
-                        //float steeringPenalty = steerAngle/maxSteerAngle;
-                        float steeringPenalty = 0;
-                        sucessor.g = n.g + (float)Math.Sqrt(2) + steeringPenalty;
-                        bool flag = false;
-                        
-                        foreach(Node one in openSet)
-                        {   
-                            // Check if the sucessor has a neighbour in the same cell
-                            if(one.gridIdx == sucessor.gridIdx)
-                            {   
-                                // Remove the neighbour from the cell if the sucessor has lower cost
-                                if (sucessor.g < one.g)
-                                {   
-                                    flag = true;
-                                    openSet.Remove(one);
-                                    break;
-                                }
-=======
                     }
 
                     // Check if the sucessor is expanded  !closedSet.ContainsKey(sucessor.gridIdx)
@@ -171,7 +143,6 @@ namespace UnityStandardAssets.Vehicles.Car
                             {
                                 orentation = direc;
                                 break;
->>>>>>> d9a05ae5623b2ed1fce3828fb5956a93e8d3bd53
                             }
                         }
                         //if one node per cell we use !closedSet.ContainsKey(sucessor.gridIdx) 
@@ -182,12 +153,6 @@ namespace UnityStandardAssets.Vehicles.Car
                             sucessor.g = n.g + (float)Math.Sqrt(2) + steeringPenalty;
                             bool flag = false;
 
-<<<<<<< HEAD
-                            // Drawing some stuff
-                            draw1 = new Vector3(n.x, 0, n.z);
-                            draw2 = new Vector3(sucessor.x, 0, sucessor.z);
-                            Debug.DrawLine(draw1, draw2, Color.blue, 1f);
-=======
                             foreach (Node one in openSet)
                             {
                                 // Check if the sucessor has a neighbour in the same cell
@@ -202,7 +167,6 @@ namespace UnityStandardAssets.Vehicles.Car
                                     }
                                 }
                             }
->>>>>>> d9a05ae5623b2ed1fce3828fb5956a93e8d3bd53
 
                             if (!openSet.Contains(sucessor) || flag)
                             {
