@@ -52,11 +52,11 @@ namespace UnityStandardAssets.Vehicles.Car
 
         public Node HybridAStar(TerrainManager terrain_manager, CarController m_Car, Vector3 start_pos, float start_angle, Vector3 goal_pos, float[,] obstacle_map, int MAX_SIZE = 10000)
         {   
-            Debug.Log("In HybridAStar");
+            //Debug.Log("In HybridAStar");
             
             // Control list
             maxSteerAngle = m_Car.m_MaximumSteerAngle*(float)Math.PI/180;
-            Debug.Log("Maximum steering angle: " + maxSteerAngle);
+            //Debug.Log("Maximum steering angle: " + maxSteerAngle);
             steering = new float[]{0, -maxSteerAngle, maxSteerAngle};
             
             // Getting map info
@@ -72,11 +72,11 @@ namespace UnityStandardAssets.Vehicles.Car
 
             // Create the startnode
             startNode = new Node(start_pos.x, start_pos.z, start_angle, calculateGridIndex(start_pos.x, start_pos.z), 0, 0, 0, null);
-            Debug.Log(calculateGridIndex(start_pos.x, start_pos.z));
+            //Debug.Log(calculateGridIndex(start_pos.x, start_pos.z));
 
             // Create the goalnode
             goalNode = new Node(goal_pos.x, goal_pos.z, 0, calculateGridIndex(goal_pos.x, goal_pos.z), 0, 0, 0, null);
-            Debug.Log(calculateGridIndex(goal_pos.x, goal_pos.z));
+            //Debug.Log(calculateGridIndex(goal_pos.x, goal_pos.z));
 
             // Creating the open set (Priority queue for guided search of map)
             FastPriorityQueue<Node> openSet = new FastPriorityQueue<Node>(MAX_SIZE);
@@ -120,9 +120,9 @@ namespace UnityStandardAssets.Vehicles.Car
                     {
                         if(obstacle_map[(int)Math.Round((sucessor.x - x_low) / x_res),(int)Math.Round((sucessor.z - z_low) / z_res)] == 1)
                         {   
-                            //draw1 = new Vector3(n.x, 0, n.z);
-                            //draw2 = new Vector3(sucessor.x, 0, sucessor.z);
-                            //Debug.DrawLine(draw1, draw2, Color.yellow, 100f);
+                            draw1 = new Vector3(n.x, 0, n.z);
+                            draw2 = new Vector3(sucessor.x, 0, sucessor.z);
+                            Debug.DrawLine(draw1, draw2, Color.yellow, 2f);
                             continue;
                         }
                     }
@@ -139,7 +139,8 @@ namespace UnityStandardAssets.Vehicles.Car
                     // Check if the sucessor is expanded
                     if (!closedSet.ContainsKey(sucessor.gridIdx))
                     {   
-                        float steeringPenalty = (1 - steerAngle/maxSteerAngle);
+                        //float steeringPenalty = steerAngle/maxSteerAngle;
+                        float steeringPenalty = 0;
                         sucessor.g = n.g + (float)Math.Sqrt(2) + steeringPenalty;
                         bool flag = false;
                         
@@ -166,9 +167,9 @@ namespace UnityStandardAssets.Vehicles.Car
                             openSet.Enqueue(sucessor, sucessor.f);
 
                             // Drawing some stuff
-                            //draw1 = new Vector3(n.x, 0, n.z);
-                            //draw2 = new Vector3(sucessor.x, 0, sucessor.z);
-                            //Debug.DrawLine(draw1, draw2, Color.blue, 100f);
+                            draw1 = new Vector3(n.x, 0, n.z);
+                            draw2 = new Vector3(sucessor.x, 0, sucessor.z);
+                            Debug.DrawLine(draw1, draw2, Color.blue, 1f);
 
                             // Push node onto the set of expanded nodes
                             closedSet.Add(sucessor.gridIdx, sucessor);
