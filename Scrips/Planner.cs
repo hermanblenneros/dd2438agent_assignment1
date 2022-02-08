@@ -54,6 +54,7 @@ namespace UnityStandardAssets.Vehicles.Car
             maxSteerAngle = m_Car.m_MaximumSteerAngle*(float)Math.PI/180;
             //Debug.Log("Maximum steering angle: " + maxSteerAngle);
             steering = new float[]{0, -maxSteerAngle, maxSteerAngle};
+            //orentations2 = f(steering);
             
             // Getting map info
             x_size = obstacle_map.GetLength(0);
@@ -68,11 +69,11 @@ namespace UnityStandardAssets.Vehicles.Car
 
             // Create the startnode
             startNode = new Node(start_pos.x, start_pos.z, start_angle, calculateGridIndex(start_pos.x, start_pos.z), 0, 0, 0, null);
-            Debug.Log(calculateGridIndex(start_pos.x, start_pos.z));
+            //Debug.Log(calculateGridIndex(start_pos.x, start_pos.z));
 
             // Create the goalnode
             goalNode = new Node(goal_pos.x, goal_pos.z, 0, calculateGridIndex(goal_pos.x, goal_pos.z), 0, 0, 0, null);
-            Debug.Log(calculateGridIndex(goal_pos.x, goal_pos.z));
+            //Debug.Log(calculateGridIndex(goal_pos.x, goal_pos.z));
 
             // Creating the open set (Priority queue for guided search of map)
             FastPriorityQueue<Node> openSet = new FastPriorityQueue<Node>(MAX_SIZE);

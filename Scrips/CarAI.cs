@@ -10,62 +10,67 @@ namespace UnityStandardAssets.Vehicles.Car
     public class CarAI : MonoBehaviour
     {   
         //// Declaration of variables
+
         // Unity variables
         private CarController m_Car;
         Rigidbody my_rigidbody;
         public GameObject terrain_manager_game_object;
         TerrainManager terrain_manager;
+
         // Planning variables
         Vector3 start_pos;
         Vector3 goal_pos;
         List<Node> my_path = new List<Node>();
+
         // Tracking variables
         public float k_p = 2f, k_d = 0.5f;
-        float minDist, minDist2, dist, steering, acceleration, timer = 0, reverse_timer = 0, break_timer = 0, old_acc_amp = 0, my_speed, to_path, old_angle, new_angle, angle_change;
-        int minDistIdx, minDistIdx2, Idx, Idx2, lookahead = 0, my_topSpeed;
-        bool is_stuck = false, starting_out = true, is_breaking = false, counting = false;
+        float to_path, to_target, distance, steering, acceleration, starting_timer = 0, stuck_timer = 0, reverse_timer = 0, break_timer = 0, old_acceleration = 0, new_acceleration, acceleration_change, my_speed = 0, old_angle, new_angle, angle_change, unstuck_error, old_unstuck_error = 100, unstuck_error_change;
+        int to_path_idx, to_target_idx, dummy_idx, dummy_idx2, lookahead = 0, my_max_speed = 25;
+        bool starting_phase = true, is_stuck = false, is_breaking = false, counting = false, no_waypoint = true;
         Vector3 pos, difference, target_position, aheadOfTarget_pos, target_velocity, position_error, velocity_error, desired_acceleration, closest, null_vector = new Vector3(0,0,0);
         Node target, aheadOfTarget, closestNode;
         List<float> controls = new List<float>(), cum_angle_change = new List<float>();
 
         //// Definition of functions
+
+        // Function that computes the appropriate maximum speed depending on the curvature ahead
+        public int curvatureToSpeed(float curvature_ahead)
+        {
+            int multiple = (int)Math.Round( (Math.Abs( curvature_ahead / (Math.PI/7.2) )) );
+
+            if(multiple > 2)
+            {
+                return (int)5;
+            }
+            else if(multiple > 1)
+            {
+                return (int)10;
+            }
+            else
+            {
+                return (int)30;
+            }
+        }
+
         // Function that computes the appropriate lookahead depending on the current speed
         public int speedToLookahead(float my_speed)
         {
             lookahead = (int)(4 + Math.Sqrt(my_speed));
             return lookahead;
         }
-        // Function that computes the appropriate maximum speed depending on the curvature ahead
-        public int curvatureToSpeed(float curvature_ahead)
-        {
-            int multiple = (int)Math.Round( (Math.Abs( curvature_ahead / (Math.PI/4) )) );
 
-            if(multiple > 2)
-            {
-                return (int)5;
-            }
-            else
-            {
-                return (int)25;
-            }
-        }
-
+        // Start function is run once every time the CarAI script is invoked
         private void Start()
         {
-            // Get the car controller
+            // Get stuff
             m_Car = GetComponent<CarController>();
-
-            // Get the terrain manager
             terrain_manager = terrain_manager_game_object.GetComponent<TerrainManager>();
-
-            // Get the rigid body
             my_rigidbody = GetComponent<Rigidbody>();
-
-            // Get start and goal position
             start_pos = terrain_manager.myInfo.start_pos;
             goal_pos = terrain_manager.myInfo.goal_pos;
             
             // Create mapper and compute obstacle map
+            Debug.Log("Creating obstacle map of current terrain");
             Mapper mapper = new Mapper(terrain_manager);
             float[,] obstacle_map = mapper.configure_obstacle_map(terrain_manager);
 
@@ -117,9 +122,9 @@ namespace UnityStandardAssets.Vehicles.Car
             }
 
             // Approximating cumulative forward angle changes in path
-            for(int i = 0; i < my_path.Count - 11; i++)
+            for(int i = 0; i < my_path.Count - 3; i++)
             {
-                cum_angle_change.Add(controls[i] + controls[i+1] + controls[i+2] + controls[i+3] + controls[i+4] + controls[i+5] + controls[i+6] + controls[i+7] + controls[i+8] + controls[i+9] + controls[i+10] + controls[i+10]);
+                cum_angle_change.Add(controls[i] + controls[i+1] + controls[i+2] + controls[i+3]);
             }
             
             // Going to FixedUpdate()
@@ -127,67 +132,86 @@ namespace UnityStandardAssets.Vehicles.Car
         }
 
         private void FixedUpdate()
-        {
+        {   
+
+            // Starting out phase means no checking for stuck and no checking for breaking
+            if(starting_phase)
+            {   
+                if(starting_timer < Time.time && !counting)
+                {
+                    starting_timer = Time.time + 5;
+                    counting = true;
+                }
+
+                if(Time.time >= starting_timer)
+                {
+                    counting = false;
+                    starting_phase = false;
+                }
+
+            }
+
             // Tracks the path generated by planner
-            // Decide on lookahead
+
+            // Decide on lookahead based on speed;
             lookahead = speedToLookahead(my_speed);
 
             // Tracks forward along the path if not stuck
             if(!is_stuck)
             {   
                 // Finding closest node on path
-                minDist = 100;
-                minDistIdx = 0;
-                Idx = 0;
+                to_path = 100;
+                to_path_idx = 0;
+                dummy_idx = 0;
                 foreach(Node node in my_path)
                 {
                     pos = new Vector3(node.x, 0, node.z);
                     difference = pos - transform.position;
-                    dist = (float) Math.Sqrt( Math.Pow(difference.x,2) + Math.Pow(difference.z, 2) );
+                    distance = (float) Math.Sqrt( Math.Pow(difference.x,2) + Math.Pow(difference.z, 2) );
                     
-                    if(dist < minDist)
+                    if(distance < to_path)
                     {
-                        minDist = dist;
-                        minDistIdx = Idx;
+                        to_path = distance;
+                        to_path_idx = dummy_idx;
                     }
-                    Idx += 1;
+                    dummy_idx += 1;
                 }
 
-                // Saving data about closest node
-                closestNode = my_path[minDistIdx];
+                // Saving data about node on path closest to the car
+                closestNode = my_path[to_path_idx];
                 closest = new Vector3(closestNode.x, 0, closestNode.z);
                 difference = closest - transform.position;
                 to_path = (float) Math.Sqrt( Math.Pow(difference.x,2) + Math.Pow(difference.z, 2) );
 
                 // Finding target node on path
-                minDist2 = 100;
-                minDistIdx2 = 0;
-                Idx2 = 0;
+                to_target = 100;
+                to_target_idx = 0;
+                dummy_idx2 = 0;
                 foreach(Node node in my_path)
                 {
-                    if(Idx2 < minDistIdx)
+                    if(dummy_idx2 < to_path_idx)
                     {   
-                        Idx2 += 1;
+                        dummy_idx2 += 1;
                         continue;
                     }
 
                     pos = new Vector3(node.x, 0, node.z);
                     difference = pos - closest;
-                    dist = (float) Math.Sqrt( Math.Pow(difference.x,2) + Math.Pow(difference.z, 2) );
+                    distance = (float) Math.Sqrt( Math.Pow(difference.x,2) + Math.Pow(difference.z, 2) );
 
-                    if(Math.Abs(dist + to_path - lookahead) < minDist2)
+                    if(Math.Abs(distance + to_path - lookahead) < to_target)
                     {
-                        minDist2 = Math.Abs(dist + to_path - lookahead);
-                        minDistIdx2 = Idx2;
+                        to_target = Math.Abs(distance + to_path - lookahead);
+                        to_target_idx = dummy_idx2;
                     }
-                    Idx2 += 1;
+                    dummy_idx2 += 1;
                 }
 
                 // Break condition
                 try
                 {
-                    target = my_path[minDistIdx2];
-                    aheadOfTarget = my_path[minDistIdx2 + 1];
+                    target = my_path[to_target_idx];
+                    aheadOfTarget = my_path[to_target_idx + 1];
                 }
                 catch(ArgumentOutOfRangeException e)
                 {   
@@ -208,37 +232,43 @@ namespace UnityStandardAssets.Vehicles.Car
                 desired_acceleration = k_p * position_error + k_d * velocity_error;
 
                 // Apply controls
-                float steering = Vector3.Dot(desired_acceleration, transform.right);
-                float acceleration = Vector3.Dot(desired_acceleration, transform.forward);
+                steering = Vector3.Dot(desired_acceleration, transform.right);
+                acceleration = Vector3.Dot(desired_acceleration, transform.forward);
                 
+                if(!starting_phase)
+                {
+                    my_max_speed = curvatureToSpeed(cum_angle_change[to_target_idx + 2]);
+                }
+
+
                 if(!is_breaking)
                 {
-                    my_topSpeed = curvatureToSpeed(cum_angle_change[minDistIdx2]);
-                    Debug.Log("Maximum speed: " + my_topSpeed);
+                    break_timer = 0;
                 }
-
-                if(my_speed > my_topSpeed || is_breaking)
+            
+                if(my_speed > my_max_speed || is_breaking)
                 {   
+
                     is_breaking = true;
+
+                    if(break_timer == 0)
+                    {
+                        break_timer = Time.time + 1;
+                    }
+                    
                     m_Car.Move(steering, -acceleration, -acceleration, 0f);
 
-                    if(my_speed <= my_topSpeed)
+                    if(Time.time > break_timer)
+                    {
+                        is_breaking = false;
+                    }
+
+                    if(cum_angle_change[to_target_idx] > Math.PI/3.6)
                     {   
-                        if(break_timer <= Time.time && !counting)
-                        {
-                            break_timer = Time.time + 5;
-                            counting = true;
-                            m_Car.Move(steering, acceleration, acceleration, 0f);
-                        }
-                        
-                        if(Time.time > break_timer)
-                        {
-                            counting = false;
-                            is_breaking = false;
-                            m_Car.Move(steering, acceleration, acceleration, 0f);
-                        }
+                        break_timer = Time.time + 1;                     
                     }
                 }
+
                 else
                 {
                     m_Car.Move(steering, acceleration, acceleration, 0f);
@@ -246,21 +276,20 @@ namespace UnityStandardAssets.Vehicles.Car
 
                 // State variables for stuck condition
                 my_speed = (float) Math.Sqrt( Math.Pow(my_rigidbody.velocity.x, 2) + Math.Pow(my_rigidbody.velocity.z, 2) );
-                //Debug.Log("My speed: " + my_speed);
-                float acc_amp = (float) Math.Sqrt( Math.Pow(desired_acceleration.x, 2) + Math.Pow(desired_acceleration.z, 2) );
-                float acc_change = acc_amp - old_acc_amp;
-                old_acc_amp = acc_amp;
+                new_acceleration = (float) Math.Sqrt( Math.Pow(desired_acceleration.x, 2) + Math.Pow(desired_acceleration.z, 2) );
+                acceleration_change = new_acceleration - old_acceleration;
+                old_acceleration = new_acceleration;
 
                 // Check stuckness. If stuck -> go to else statement below
-                if(my_speed < 0.3 && acc_change < 0.0001)
+                if(my_speed < 0.3 && acceleration_change < 0.0001 && !starting_phase)
                 {   
-                    if(timer <= Time.time && !counting)
+                    if(stuck_timer <= Time.time && !counting)
                     {   
                         counting = true;
-                        timer = Time.time + 5;
+                        stuck_timer = Time.time + 5;
                     }
 
-                    if(Time.time > timer)
+                    if(Time.time > stuck_timer)
                     {   
                         Debug.Log("Car stuck detected");
                         counting = false;
@@ -268,46 +297,69 @@ namespace UnityStandardAssets.Vehicles.Car
                     }
                 }
             }
-            else // If stuck criterion == true
+
+            // We are stuck
+            else
             {   
-                if(reverse_timer <= Time.time && !counting)
-                {   
-                    counting = true;
-                    Debug.Log("Getting unstuck");
-                    reverse_timer = Time.time + 1;
-                }
+                // Decide on lookbehind based on speed;
+                lookahead = speedToLookahead(my_speed);
 
-                if(Time.time > reverse_timer)
-                {   
-                    counting = false;
-                    is_stuck = false;
-                }
-
-                // Finding closest node on path
-                minDist = 100;
-                minDistIdx = 0;
-                Idx = 0;
-                foreach(Node node in my_path)
+                if(no_waypoint)
                 {
-                    pos = new Vector3(node.x, 0, node.z);
-                    difference = transform.position - pos;
-                    dist = (float) Math.Sqrt( Math.Pow(difference.x,2) + Math.Pow(difference.z, 2) );
-                    if(dist < minDist)
+                    // Finding closest node on path
+                    to_path = 100;
+                    to_path_idx = 0;
+                    dummy_idx = 0;
+                    foreach(Node node in my_path)
                     {
-                        minDist = dist;
-                        minDistIdx = Idx;
+                        pos = new Vector3(node.x, 0, node.z);
+                        difference = transform.position - pos;
+                        distance = (float) Math.Sqrt( Math.Pow(difference.x,2) + Math.Pow(difference.z, 2) );
+
+                        if(distance < to_path)
+                        {
+                            to_path = distance;
+                            to_path_idx = dummy_idx;
+                        }
+
+                        dummy_idx += 1;
                     }
 
-                    Idx += 1;
-                }
+                    // Saving data about node on path closest to the car
+                    closestNode = my_path[to_path_idx];
+                    closest = new Vector3(closestNode.x, 0, closestNode.z);
+                    difference = closest - transform.position;
+                    to_path = (float) Math.Sqrt( Math.Pow(difference.x,2) + Math.Pow(difference.z, 2) );
 
-                // Decide on "lookbehind"
-                lookahead = 4;
+                    // Finding target node on path
+                    to_target = 100;
+                    to_target_idx = 0;
+                    dummy_idx2 = 0;
+                    foreach(Node node in my_path)
+                    {
+                        if(dummy_idx2 > to_path_idx)
+                        {   
+                            break;
+                        }
+
+                        pos = new Vector3(node.x, 0, node.z);
+                        difference = pos - closest;
+                        distance = (float) Math.Sqrt( Math.Pow(difference.x,2) + Math.Pow(difference.z, 2) );
+
+                        if(Math.Abs(distance + to_path - lookahead) < to_target)
+                        {
+                            to_target = Math.Abs(distance + to_path - lookahead);
+                            to_target_idx = dummy_idx2;
+                        }
+                        dummy_idx2 += 1;
+                    }
+                    no_waypoint = false;
+                }
 
                 // Break condition
                 try
                 {
-                    target = my_path[minDistIdx - lookahead];
+                    target = my_path[to_target_idx];
                 }
                 catch(ArgumentOutOfRangeException e)
                 {   
@@ -317,6 +369,7 @@ namespace UnityStandardAssets.Vehicles.Car
                 // Keep track of target position and velocity
                 target_position = new Vector3(target.x, 0, target.z);
                 target_velocity = null_vector;
+                Debug.DrawLine(transform.position, target_position);
 
                 // a PD-controller to get desired velocity
                 position_error = target_position - transform.position;
@@ -328,6 +381,17 @@ namespace UnityStandardAssets.Vehicles.Car
                 acceleration = Vector3.Dot(desired_acceleration, transform.forward);
                 m_Car.Move(steering, acceleration, acceleration, 0f);
 
+                // State variables for unstuck condition
+                unstuck_error = (float) Math.Sqrt( Math.Pow(position_error.x, 2) + Math.Pow(position_error.z, 2) );
+                unstuck_error_change = (float)Math.Abs(unstuck_error - old_unstuck_error);
+                old_unstuck_error = unstuck_error;
+                
+                if(unstuck_error_change < 0.0001)
+                {   
+                    old_unstuck_error = 100;
+                    is_stuck = false;
+                    no_waypoint = true;
+                }
             }
         }
     }
