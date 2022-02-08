@@ -119,7 +119,7 @@ namespace UnityStandardAssets.Vehicles.Car
                         {   
                             draw1 = new Vector3(n.x, 0, n.z);
                             draw2 = new Vector3(sucessor.x, 0, sucessor.z);
-                            Debug.DrawLine(draw1, draw2, Color.yellow, 100f);
+                            Debug.DrawLine(draw1, draw2, Color.yellow, 1f);
                             continue;
                         }
                     }
@@ -149,7 +149,7 @@ namespace UnityStandardAssets.Vehicles.Car
                         if (closedSet2.Get(sucessor.gridIdx, orentation) == null)
                         {
                       
-                            float steeringPenalty = (1 - steerAngle / maxSteerAngle);
+                            float steeringPenalty = 0;
                             sucessor.g = n.g + (float)Math.Sqrt(2) + steeringPenalty;
                             bool flag = false;
 
@@ -178,7 +178,7 @@ namespace UnityStandardAssets.Vehicles.Car
                                 // Drawing some stuff
                                 draw1 = new Vector3(n.x, 0, n.z);
                                 draw2 = new Vector3(sucessor.x, 0, sucessor.z);
-                                Debug.DrawLine(draw1, draw2, Color.blue, 100f);
+                                Debug.DrawLine(draw1, draw2, Color.blue, 1f);
 
                                 // Push node onto the set of expanded nodes
                                 //closedSet.Add(sucessor.gridIdx, sucessor);
@@ -192,6 +192,7 @@ namespace UnityStandardAssets.Vehicles.Car
                     }
                 }
             }
+
             Debug.Log("No path found!");
             return null;
         }
