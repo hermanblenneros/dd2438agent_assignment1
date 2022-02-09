@@ -114,4 +114,68 @@ public class Mapper
             return new_obstacle_map2;
         }
     }
+    private float calculateEuclidean(float x1, float z1, float x2, float z2)
+    {
+        return (float)Math.Sqrt(Math.Pow((x1 - x2), 2) + Math.Pow((z1 - z2), 2));
+    }
+    public float[,] configure_obstacle_map(float[,] obstacle_map)
+    {
+        // Getting map info
+        int x_size = obstacle_map.GetLength(0);
+        int z_size = obstacle_map.GetLength(1);
+
+        // goal map in same size with the obstacle_map
+        float[,] obstacle_distance_map = new float[x_size, z_size];
+
+        //traverse the obstacle_map
+        for (int i = 1; i < (int)(x_size) - 1; i++)
+        {
+            for (int j = 1; j < (int)(z_size) - 1; j++)
+            {
+                //distance to obstacle is zero
+                if(obstacle_map[i, j]==1)
+                {
+                    obstacle_distance_map[i, j] = 0;
+                }
+                else
+                {
+                    //record the minimum distance
+                    float mindistance = 1000;
+                    /*
+                    int count = 0;
+                    while(count< (float)Math.Min(Math.Min(x_size-i, z_size - j), Math.Min(i,j)))
+                    {
+                       count++;
+                       float neighbours = obstacle_distance_map[i - count, j] + obstacle_distance_map[i - count, j - count] + obstacle_distance_map[i, j - count] + obstacle_distance_map[i + count, j - count] + obstacle_distance_map[i + count, j] + obstacle_distance_map[i + count, j + count] + obstacle_distance_map[i, j + count] + obstacle_distance_map[i - count, j + count];
+                       if (neighbours >= 1)
+                       {
+                           obstacle_distance_map[i, j] = count;
+                       }
+                    }
+                    */
+
+                    //traverse the obstacle_map to find the minimum distance to the obstacle
+                    for (int m = 1; m < (int)(x_size) - 1; m++)
+                    {
+                        for (int n = 1; n < (int)(z_size) - 1; n++)
+                        {
+                            if(obstacle_map[m, n] == 1)
+                            {
+                                float distance = calculateEuclidean(i, j, m, n);
+                                if (distance < mindistance)
+                                {
+                                    mindistance = distance;
+                                }
+                            }
+                                  
+                        }
+                    }
+
+                    //the value in grid is the minimum distance
+                    obstacle_distance_map[i, j] = mindistance;
+                }
+            }
+        }
+                return obstacle_distance_map;
+    }
 }
