@@ -114,11 +114,13 @@ public class Mapper
             return new_obstacle_map2;
         }
     }
+    
     private float calculateEuclidean(float x1, float z1, float x2, float z2)
     {
         return (float)Math.Sqrt(Math.Pow((x1 - x2), 2) + Math.Pow((z1 - z2), 2));
     }
-    public float[,] configure_obstacle_map(float[,] obstacle_map)
+    
+    public float[,] configure_distance_map(float[,] obstacle_map)
     {
         // Getting map info
         int x_size = obstacle_map.GetLength(0);
@@ -176,6 +178,7 @@ public class Mapper
                 }
             }
         }
-                return obstacle_distance_map;
+        
+        return obstacle_distance_map;
     }
 }

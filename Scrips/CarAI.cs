@@ -24,7 +24,7 @@ namespace UnityStandardAssets.Vehicles.Car
 
         // Tracking variables
         public float k_p = 2f, k_d = 0.5f;
-        float to_path, to_target, distance, steering, acceleration, starting_timer = 0, stuck_timer = 0, reverse_timer = 0, break_timer = 0, old_acceleration = 0, new_acceleration, acceleration_change, my_speed = 0, old_angle, new_angle, angle_change, unstuck_error, old_unstuck_error = 100, unstuck_error_change;
+        float to_path, to_target, distance, steering, acceleration, starting_timer = 0, stuck_timer = 0, reverse_timer = 0, break_timer = 0, old_acceleration = 0, new_acceleration, acceleration_change, my_speed = 0, old_angle, new_angle, angle_change, unstuck_error, old_unstuck_error = 100, unstuck_error_change, clearance, max_clearance = 0;
         int to_path_idx, to_target_idx, dummy_idx, dummy_idx2, lookahead = 0, my_max_speed = 25;
         bool starting_phase = true, is_stuck = false, is_breaking = false, counting = false, no_waypoint = true;
         Vector3 pos, difference, target_position, aheadOfTarget_pos, target_velocity, position_error, velocity_error, desired_acceleration, closest, null_vector = new Vector3(0,0,0);
@@ -73,11 +73,12 @@ namespace UnityStandardAssets.Vehicles.Car
             Debug.Log("Creating obstacle map of current terrain");
             Mapper mapper = new Mapper(terrain_manager);
             float[,] obstacle_map = mapper.configure_obstacle_map(terrain_manager);
+            float[,] distance_map = mapper.configure_distance_map(obstacle_map);
 
             // Create planner and find path
             Debug.Log("Planning path");
             Planner planner = new Planner();
-            Node goalNode = planner.HybridAStar(terrain_manager, m_Car, start_pos, (float)Math.PI/2, goal_pos, obstacle_map, 10000);
+            Node goalNode = planner.HybridAStar(terrain_manager, m_Car, start_pos, (float)Math.PI/2, goal_pos, obstacle_map, distance_map, 10000);
             
             // Disable code if path not found
             if(goalNode == null)
@@ -105,6 +106,7 @@ namespace UnityStandardAssets.Vehicles.Car
                 old_wp = wp;
             }
 
+            // Removing abudant nodes from path
             DouglasPeucker dp = new DouglasPeucker();
             List<Node> dp_path = dp.DouglasPeuckerReduction(my_path, 1);
             Vector3 old_wpp = start_pos;

@@ -51,11 +51,12 @@ public class DroneAI : MonoBehaviour
         Debug.Log("Creating obstacle map of current terrain");
         Mapper mapper = new Mapper(terrain_manager);
         float[,] obstacle_map = mapper.configure_obstacle_map(terrain_manager);
+        float[,] distance_map = mapper.configure_distance_map(obstacle_map);
 
         // Create planner and find path
         Debug.Log("Planning path");
         Planner planner = new Planner();
-        Node goalNode = planner.AStar(terrain_manager, m_Drone, start_pos, goal_pos, obstacle_map, 10000);
+        Node goalNode = planner.AStar(terrain_manager, m_Drone, start_pos, goal_pos, obstacle_map, distance_map, 10000);
 
         if (goalNode == null)
         {
@@ -83,6 +84,17 @@ public class DroneAI : MonoBehaviour
             old_wp = wp;
         }
         Debug.Log("Tracking path");
+
+        // Removing abudant nodes from path
+        DouglasPeucker dp = new DouglasPeucker();
+        List<Node> dp_path = dp.DouglasPeuckerReduction(my_path, 1);
+        Vector3 old_wpp = start_pos;
+        foreach (Node n in dp_path)
+        {
+            Vector3 wp = new Vector3(n.x, 0, n.z);
+            Debug.DrawLine(old_wpp, wp, Color.green, 100f);
+            old_wpp = wp;
+        }
     }
 
     private void FixedUpdate()

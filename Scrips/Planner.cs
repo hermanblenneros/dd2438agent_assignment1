@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
+using System.Linq;
 using Priority_Queue;
 
 namespace UnityStandardAssets.Vehicles.Car
@@ -46,14 +47,14 @@ namespace UnityStandardAssets.Vehicles.Car
             return gridIdx;
         }
 
-        public Node HybridAStar(TerrainManager terrain_manager, CarController m_Car, Vector3 start_pos, float start_angle, Vector3 goal_pos, float[,] obstacle_map, int MAX_SIZE = 10000)
+        public Node HybridAStar(TerrainManager terrain_manager, CarController m_Car, Vector3 start_pos, float start_angle, Vector3 goal_pos, float[,] obstacle_map, float[,] distance_map, int MAX_SIZE = 10000)
         {   
             Debug.Log("In HybridAStar");
             
             // Control list
             maxSteerAngle = m_Car.m_MaximumSteerAngle*(float)Math.PI/180;
             //Debug.Log("Maximum steering angle: " + maxSteerAngle);
-            steering = new float[]{0, -maxSteerAngle, maxSteerAngle};
+            steering = new float[]{0, -(float)Math.PI/8, (float)Math.PI/8};
             //orentations2 = f(steering);
             
             // Getting map info
@@ -120,7 +121,7 @@ namespace UnityStandardAssets.Vehicles.Car
                         {   
                             draw1 = new Vector3(n.x, 0, n.z);
                             draw2 = new Vector3(sucessor.x, 0, sucessor.z);
-                            Debug.DrawLine(draw1, draw2, Color.yellow, 1f);
+                            //Debug.DrawLine(draw1, draw2, Color.yellow, 1f);
                             continue;
                         }
                     }
@@ -150,8 +151,10 @@ namespace UnityStandardAssets.Vehicles.Car
                         if (closedSet2.Get(sucessor.gridIdx, orentation) == null)
                         {
                       
-                            float steeringPenalty = 0;
-                            sucessor.g = n.g + (float)Math.Sqrt(2) + steeringPenalty;
+                            float steeringPenalty = 1 - steerAngle/maxSteerAngle; // (0,1)
+                            float clearance = distance_map[(int)Math.Round((sucessor.x - x_low) / x_res), (int)Math.Round((sucessor.z - z_low) / z_res)];
+                            float obstaclePenalty = 20 - clearance; // (4,5)
+                            sucessor.g = n.g + (float)Math.Sqrt(2) + steeringPenalty + obstaclePenalty;
                             bool flag = false;
 
                             foreach (Node one in openSet)
@@ -179,7 +182,7 @@ namespace UnityStandardAssets.Vehicles.Car
                                 // Drawing some stuff
                                 draw1 = new Vector3(n.x, 0, n.z);
                                 draw2 = new Vector3(sucessor.x, 0, sucessor.z);
-                                Debug.DrawLine(draw1, draw2, Color.blue, 1f);
+                                Debug.DrawLine(draw1, draw2, Color.blue, 10f);
 
                                 // Push node onto the set of expanded nodes
                                 //closedSet.Add(sucessor.gridIdx, sucessor);
@@ -198,7 +201,7 @@ namespace UnityStandardAssets.Vehicles.Car
             return null;
         }
 
-        public Node AStar(TerrainManager terrain_manager, DroneController m_Drone, Vector3 start_pos, Vector3 goal_pos, float[,] obstacle_map, int MAX_SIZE = 10000)
+        public Node AStar(TerrainManager terrain_manager, DroneController m_Drone, Vector3 start_pos, Vector3 goal_pos, float[,] obstacle_map, float[,] distance_map, int MAX_SIZE = 10000)
         {
             Debug.Log("In AStar");
 
@@ -298,7 +301,8 @@ namespace UnityStandardAssets.Vehicles.Car
                         {
 
                             //float steeringPenalty = (1 - steerAngle / maxSteerAngle);
-                            sucessor.g = n.g + (float)Math.Sqrt(2);
+                            float obstaclePenalty = 20 - distance_map[(int)Math.Round((sucessor.x - x_low) / x_res), (int)Math.Round((sucessor.z - z_low) / z_res)];
+                            sucessor.g = n.g + (float)Math.Sqrt(2) + obstaclePenalty;
                             bool flag = false;
 
                             //Check and update the lower cost node in same cell
