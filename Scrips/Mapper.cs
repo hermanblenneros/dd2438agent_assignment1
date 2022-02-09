@@ -10,7 +10,7 @@ public class Mapper
 
     }
 
-    public float[,] configure_obstacle_map(TerrainManager terrain_manager)
+    public float[,] configure_obstacle_map(TerrainManager terrain_manager, float padding)
     {   
         float[,] obstacle_map = terrain_manager.myInfo.traversability;
         int xSize = obstacle_map.GetLength(0);     //5//400
@@ -27,13 +27,13 @@ public class Mapper
 
         float[,] intermediate_map1 = new float[(int)(xSize*xRes), zNum];  //5*40 *  4=800//200 *400
         float[,] intermediate_map2 = new float[(int)(xSize*xRes), (int)(zSize*zRes)]; //5*40 * 4*50=40000  // 200* 200
-        float[,] intermediate_map3 = new float[(int)(xSize*xRes), (int)(zSize*zRes)];  //40000 
         float[,] new_obstacle_map = new float[(int)(xSize*xRes), (int)(zSize*zRes)];  //40000
         float[,] intermediate_samemap = new float[(int)(xSize), (int)(zSize)];
         float[,] new_obstacle_map2 = new float[(int)(xSize), (int)(zSize)];
 
         if (xRes >= 1 && zRes >= 1)
-        {
+        {   
+            // Upsample in x-direction
             for (int i = 0; i < xNum; i++)
             {
                 for (int j = 0; j < xRes; j++)
@@ -45,6 +45,7 @@ public class Mapper
                     }
                 }
             }
+            // Upsample in z-direction
             for (int i = 0; i < zNum; i++)
             {
                 for (int j = 0; j < zRes; j++)
@@ -56,35 +57,40 @@ public class Mapper
                     }
                 }
             }
-            // pading the obstacle  
-            for (int i = 1; i < (int)(xSize * xRes) - 1; i++)
-            {
-                for (int j = 1; j < (int)(zSize * zRes) - 1; j++)
-                {
-                    float neighbours = intermediate_map2[i - 1, j] + intermediate_map2[i - 1, j - 1] + intermediate_map2[i, j - 1] + intermediate_map2[i + 1, j - 1] + intermediate_map2[i + 1, j] + intermediate_map2[i + 1, j + 1] + intermediate_map2[i, j + 1] + intermediate_map2[i - 1, j + 1];
-                    if (neighbours >= 1)
-                    {
-                        intermediate_map3[i, j] = 1;
-                    }
-                }
-            }
 
-            for (int i = 1; i < (int)(xSize * xRes) - 1; i++)
+            // Getting new info about the upsampled map
+            int new_xSize = intermediate_map2.GetLength(0);
+            int new_zSize = intermediate_map2.GetLength(1);
+            
+            float new_xRes = (float)Math.Ceiling((xMax - xMin)/new_xSize);   //40//0.5
+            float new_zRes = (float)Math.Ceiling((zMax - zMin)/new_zSize);   //50//0.5
+            Debug.Log("new_xRes :" + new_xRes);
+            Debug.Log("new_zRes :" + new_zRes);
+
+            // Padding the obstacles 
+            int padding_time = (int)Math.Max(Math.Round(padding/ new_xRes), Math.Round(padding / new_zRes));
+            Debug.Log("Padding time: " + padding_time);
+            for(int t = 0; t < padding_time; t++)
             {
-                for (int j = 1; j < (int)(zSize * zRes) - 1; j++)
+                for (int i = 1; i < (int)(xSize * xRes) - 1; i++)
                 {
-                    float neighbours = intermediate_map3[i - 1, j] + intermediate_map3[i - 1, j - 1] + intermediate_map3[i, j - 1] + intermediate_map3[i + 1, j - 1] + intermediate_map3[i + 1, j] + intermediate_map3[i + 1, j + 1] + intermediate_map3[i, j + 1] + intermediate_map3[i - 1, j + 1];
-                    if (neighbours >= 1)
+                    for (int j = 1; j < (int)(zSize * zRes) - 1; j++)
                     {
-                        new_obstacle_map[i, j] = 1;
+                        float neighbours = intermediate_map2[i - 1, j] + intermediate_map2[i - 1, j - 1] + intermediate_map2[i, j - 1] + intermediate_map2[i + 1, j - 1] + intermediate_map2[i + 1, j] + intermediate_map2[i + 1, j + 1] + intermediate_map2[i, j + 1] + intermediate_map2[i - 1, j + 1];
+                        if (neighbours >= 1)
+                        {
+                            new_obstacle_map[i, j] = 1;
+                        }
                     }
                 }
+                intermediate_map2 = new_obstacle_map;
             }
             return new_obstacle_map;
         }
+
         else
         {
-            //we keep the origianl terrain map intermediate_map2 = 
+            // We keep the origianl terrain map
             for (int i = 0; i < xSize; i++)
             {
                 for (int k = 0; k < zSize; k++)
@@ -93,9 +99,9 @@ public class Mapper
                 }
             }
 
-            // pading the obstacle  
-            int pading_time = (int)Math.Max(Math.Round(2/ xRes), Math.Round(2 / zRes));
-            for(int t = 0; t < pading_time; t++)
+            // Padding the obstacles  
+            int padding_time = (int)Math.Max(Math.Round(padding/ xRes), Math.Round(padding / zRes));
+            for(int t = 0; t < padding_time; t++)
             {
                 for (int i = 1; i < (int)(xSize ) - 1; i++)
                 {
@@ -110,7 +116,6 @@ public class Mapper
                 }
                 intermediate_samemap = new_obstacle_map2;
             }
-
             return new_obstacle_map2;
         }
     }

@@ -72,7 +72,7 @@ namespace UnityStandardAssets.Vehicles.Car
             // Create mapper and compute obstacle map
             Debug.Log("Creating obstacle map of current terrain");
             Mapper mapper = new Mapper(terrain_manager);
-            float[,] obstacle_map = mapper.configure_obstacle_map(terrain_manager);
+            float[,] obstacle_map = mapper.configure_obstacle_map(terrain_manager, (float)2);
             float[,] distance_map = mapper.configure_distance_map(obstacle_map);
 
             // Create planner and find path

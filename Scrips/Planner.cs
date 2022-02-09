@@ -180,9 +180,9 @@ namespace UnityStandardAssets.Vehicles.Car
                                 openSet.Enqueue(sucessor, sucessor.f);
 
                                 // Drawing some stuff
-                                draw1 = new Vector3(n.x, 0, n.z);
-                                draw2 = new Vector3(sucessor.x, 0, sucessor.z);
-                                Debug.DrawLine(draw1, draw2, Color.blue, 10f);
+                                //draw1 = new Vector3(n.x, 0, n.z);
+                                //draw2 = new Vector3(sucessor.x, 0, sucessor.z);
+                                //Debug.DrawLine(draw1, draw2, Color.blue, 10f);
 
                                 // Push node onto the set of expanded nodes
                                 //closedSet.Add(sucessor.gridIdx, sucessor);
