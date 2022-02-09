@@ -100,8 +100,18 @@ namespace UnityStandardAssets.Vehicles.Car
                 old_wp = wp;
             }
 
+            DouglasPeucker dp = new DouglasPeucker();
+            List<Node> dp_path = dp.DouglasPeuckerReduction(my_path, 1);
+            Vector3 old_wpp = start_pos;
+            foreach (Node n in dp_path)
+            {
+                Vector3 wp = new Vector3(n.x, 0, n.z);
+                Debug.DrawLine(old_wpp, wp, Color.green, 100f);
+                old_wpp = wp;
+            }
+
             // Getting controls of path
-            for(int i = 0; i < my_path.Count; i++)
+            for (int i = 0; i < my_path.Count; i++)
             {   
                 if(i == 0)
                 {
