@@ -28,7 +28,7 @@ namespace UnityStandardAssets.Vehicles.Car
         // Tracking variables
         public float k_p = 2f, k_d = 0.5f;
         float to_path, to_target, distance, steering, acceleration, starting_timer = 0, stuck_timer = 0, reverse_timer = 0, break_timer = 0, old_acceleration = 0, new_acceleration, acceleration_change, my_speed = 0, old_angle, new_angle, angle_change, unstuck_error, old_unstuck_error = 100, unstuck_error_change, clearance, max_clearance = 0, nextAngle, angle;
-        int to_path_idx, last_path_idx, to_target_idx, dummy_idx, dummy_idx2, path_node_count = 0, lookahead = 0, my_max_speed = 25;
+        int to_path_idx, last_path_idx, to_target_idx, dummy_idx, dummy_idx2, path_node_count = 0, lookahead = 0, my_max_speed = 25, stuck_times = 0;
         bool starting_phase = true, is_stuck = false, is_breaking = false, counting = false, no_waypoint = true;
         Vector3 pos, difference, target_position, aheadOfTarget_pos, target_velocity, position_error, velocity_error, desired_acceleration, closest, null_vector = new Vector3(0,0,0);
         Node target, aheadOfTarget, closestNode;
@@ -48,11 +48,19 @@ namespace UnityStandardAssets.Vehicles.Car
             }
             else if(curvature_ahead > 30)
             {
-                return (int)15;
+                return (int)10;
+            }
+            else if (curvature_ahead > 20)
+            {
+                return (int)12;
+            }
+            else if (curvature_ahead > 10)
+            {
+                return (int)20;
             }
             else
             {
-                return (int)20;
+                return (int)25;
             }
         }
 
@@ -119,7 +127,7 @@ namespace UnityStandardAssets.Vehicles.Car
             // Removing abudant nodes from path
             Debug.Log("old Path size" + my_path.Count);
             DouglasPeucker dp = new DouglasPeucker();
-            dp_path = dp.DouglasPeuckerReduction(my_path, 1);
+            dp_path = dp.DouglasPeuckerReduction(my_path, 0.5);
             Debug.Log("new Path size" + dp_path.Count);
 
             // Plot path
@@ -145,10 +153,11 @@ namespace UnityStandardAssets.Vehicles.Car
                 {
                     n.theta = angle;
                 }
-
+                /*
                 Vector3 wp = new Vector3(n.x, 0, n.z);
                 Debug.DrawLine(old_wpp, wp, Color.blue, 100f);
                 old_wpp = wp;
+                */
             }
 
 
@@ -202,7 +211,7 @@ namespace UnityStandardAssets.Vehicles.Car
             foreach (Node node in expand_path)
             {
                 Vector3 wp = new Vector3(node.x, 0, node.z);
-                Debug.DrawLine(old_wppp, wp, Color.yellow, 100f);
+                Debug.DrawLine(old_wppp, wp, Color.yellow, 300f);
                 old_wppp = wp;
             }
             
@@ -257,7 +266,10 @@ namespace UnityStandardAssets.Vehicles.Car
 
             // Tracks forward along the path if not stuck
             if(!is_stuck)
-            {   
+            {
+                //Once run ok, reset the stuck checker
+                stuck_times = 0;
+
                 // Finding closest node on path
                 to_path = 1000;
                 to_path_idx = 0;
@@ -275,20 +287,6 @@ namespace UnityStandardAssets.Vehicles.Car
                     }
                     dummy_idx += 1;
                 }
-
-                /*
-                if(to_path_idx==last_path_idx)
-                {
-                    path_node_count++;
-                    if(path_node_count==4)
-                    {
-                        to_path_idx += 1;
-                        last_path_idx = to_path_idx;
-                        path_node_count = 0;
-                    }
-                }
-                last_path_idx = to_path_idx;
-                */
 
                 // Saving data about node on path closest to the car
                 closestNode = expand_path[to_path_idx];
@@ -380,11 +378,13 @@ namespace UnityStandardAssets.Vehicles.Car
                 acceleration = Vector3.Dot(desired_acceleration, transform.forward);
                 
                 if (!starting_phase)
-                {
-                    Debug.Log("Next node on course path: " + (to_course_path_idx + 1));
-                    Debug.Log("Closest angle: " + (dp_path[to_course_path_idx].theta));
-                    Debug.Log("Upcoming angle: " + (dp_path[to_course_path_idx + 1].theta));
-                    Debug.Log("Upcoming angle change: " + nextAngle);
+                {   if(to_course_path_idx+1< dp_path.Count)
+                    {
+                        Debug.Log("Next node on course path: " + (to_course_path_idx + 1));
+                        Debug.Log("Closest angle: " + (dp_path[to_course_path_idx].theta));
+                        Debug.Log("Upcoming angle: " + (dp_path[to_course_path_idx + 1].theta));
+                        Debug.Log("Upcoming angle change: " + nextAngle);
+                    }
                     my_max_speed = curvatureToSpeed(nextAngle);
                 }
 
@@ -440,7 +440,7 @@ namespace UnityStandardAssets.Vehicles.Car
                         counting = true;
                         stuck_timer = Time.time + 1;
                     }
-                    //Debug.Log("Point 5");
+       
                     if (Time.time > stuck_timer)
                     {
                         Debug.Log(m_Car.CurrentSpeed);
@@ -453,11 +453,20 @@ namespace UnityStandardAssets.Vehicles.Car
 
             // We are stuck
             else
-            {   
-                // Decide on lookbehind based on speed;
-                lookahead = speedToLookahead(my_speed) + 4;
+            {
 
-                if(no_waypoint)
+                stuck_times += 1;
+                // Decide on lookbehind based on speed;
+                lookahead = speedToLookahead(my_speed)+ 0 ;
+                System.Random ran = new System.Random();
+                if (stuck_times == 200)
+                {
+                    to_target_idx = ran.Next(expand_path.Count);
+                    //stuck_times = 0;
+                    Debug.Log("Random movemwnt");
+                    no_waypoint = false;
+                }
+                if (no_waypoint)
                 {
                     // Finding closest node on path
                     to_path = 100;
@@ -477,7 +486,8 @@ namespace UnityStandardAssets.Vehicles.Car
 
                         dummy_idx += 1;
                     }
-
+                  
+                    stuck_times += 1;
                     // Saving data about node on path closest to the car
                     closestNode = expand_path[to_path_idx];
                     closest = new Vector3(closestNode.x, 0, closestNode.z);
@@ -506,6 +516,7 @@ namespace UnityStandardAssets.Vehicles.Car
                         }
                         dummy_idx2 += 1;
                     }
+              
                     no_waypoint = false;
                 }
 
@@ -516,6 +527,7 @@ namespace UnityStandardAssets.Vehicles.Car
                 }
                 catch(Exception e)
                 {
+                    Debug.Log("whole size id" + expand_path.Count + "to_target_idx:" + to_target_idx);
                     Debug.Log(e);
                     Debug.Log("Break condition Error");
                 }

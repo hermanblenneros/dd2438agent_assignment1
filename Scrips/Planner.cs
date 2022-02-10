@@ -160,7 +160,7 @@ namespace UnityStandardAssets.Vehicles.Car
                             else
                             {
                                 float obstaclePenalty = 5 - distance_map[(int)Math.Round((sucessor.x - x_low) / x_res - 0.5), (int)Math.Round((sucessor.z - z_low) / z_res - 0.5)];
-                                sucessor.g = n.g + (float)Math.Sqrt(2) + steeringPenalty + (float)Math.Sqrt(2)*obstaclePenalty;
+                                sucessor.g = n.g + (float)Math.Sqrt(2) + (float)Math.Sqrt(2) * steeringPenalty + (float)Math.Sqrt(2)*obstaclePenalty;
                             }
 
                             bool flag = false;
@@ -188,9 +188,10 @@ namespace UnityStandardAssets.Vehicles.Car
                                 openSet.Enqueue(sucessor, sucessor.f);
 
                                 // Drawing some stuff
+                                
                                 draw1 = new Vector3(n.x, 0, n.z);
                                 draw2 = new Vector3(sucessor.x, 0, sucessor.z);
-                                Debug.DrawLine(draw1, draw2, Color.blue, 100f);
+                                Debug.DrawLine(draw1, draw2, Color.blue, 300f);
 
                                 // Push node onto the set of expanded nodes
                                 //closedSet.Add(sucessor.gridIdx, sucessor);
@@ -346,10 +347,11 @@ namespace UnityStandardAssets.Vehicles.Car
                                 openSet.Enqueue(sucessor, sucessor.f);
 
                                 // Drawing some stuff
+                                /*
                                 draw1 = new Vector3(n.x, 0, n.z);
                                 draw2 = new Vector3(sucessor.x, 0, sucessor.z);
                                 Debug.DrawLine(draw1, draw2, Color.blue, 100f);
-
+                                */
                                 // Push node onto the set of expanded nodes
                                 closedSet2.Set(sucessor.gridIdx, orentation, sucessor);
                             }

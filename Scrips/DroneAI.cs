@@ -22,7 +22,7 @@ public class DroneAI : MonoBehaviour
     List<Node> dp_path = new List<Node>();
 
     // Tracking variables
-    public float k_p = 2f, k_d = 0.5f;
+    public float k_p = 16f, k_d = 12f;
     float to_path, to_target, distance, steering, acceleration, starting_timer = 0, stuck_timer = 0, reverse_timer = 0, break_timer = 0, old_acceleration = 0, new_acceleration, acceleration_change, my_speed = 0, old_angle, new_angle, angle_change, unstuck_error, old_unstuck_error = 100, unstuck_error_change, upcoming_angle, break_distance;
     int to_path_idx, to_target_idx, dummy_idx, dummy_idx2, lookahead = 0, my_max_speed = 25;
     bool starting_phase = true, is_stuck = false, is_breaking = false, counting = false, no_waypoint = true;
