@@ -27,7 +27,7 @@ namespace UnityStandardAssets.Vehicles.Car
 
         // Tracking variables
         public float k_p = 2f, k_d = 0.5f;
-        float to_path, to_target, distance, steering, acceleration, starting_timer = 0, stuck_timer = 0, reverse_timer = 0, break_timer = 0, old_acceleration = 0, new_acceleration, acceleration_change, my_speed = 0, old_angle, new_angle, angle_change, unstuck_error, old_unstuck_error = 100, unstuck_error_change, clearance, max_clearance = 0;
+        float to_path, to_target, distance, steering, acceleration, starting_timer = 0, stuck_timer = 0, reverse_timer = 0, break_timer = 0, old_acceleration = 0, new_acceleration, acceleration_change, my_speed = 0, old_angle, new_angle, angle_change, unstuck_error, old_unstuck_error = 100, unstuck_error_change, clearance, max_clearance = 0, nextAngle, angle;
         int to_path_idx, last_path_idx, to_target_idx, dummy_idx, dummy_idx2, path_node_count = 0, lookahead = 0, my_max_speed = 25;
         bool starting_phase = true, is_stuck = false, is_breaking = false, counting = false, no_waypoint = true;
         Vector3 pos, difference, target_position, aheadOfTarget_pos, target_velocity, position_error, velocity_error, desired_acceleration, closest, null_vector = new Vector3(0,0,0);
@@ -35,23 +35,24 @@ namespace UnityStandardAssets.Vehicles.Car
         List<float> controls = new List<float>(), cum_angle_change = new List<float>();
 
         //// Definition of functions
-
         // Function that computes the appropriate maximum speed depending on the curvature ahead
         public int curvatureToSpeed(float curvature_ahead)
-        {
-            int multiple = (int)Math.Round( (Math.Abs( curvature_ahead / (Math.PI/7.2) )) );
-
-            if(multiple > 2)
+        {   
+            if(curvature_ahead > 60)
             {
                 return (int)5;
             }
-            else if(multiple > 1)
+            else if(curvature_ahead > 45)
             {
-                return (int)10;
+                return (int)7;
+            }
+            else if(curvature_ahead > 30)
+            {
+                return (int)15;
             }
             else
             {
-                return (int)30;
+                return (int)20;
             }
         }
 
@@ -81,7 +82,7 @@ namespace UnityStandardAssets.Vehicles.Car
             // Create mapper and compute obstacle map
             Debug.Log("Creating obstacle map of current terrain");
             Mapper mapper = new Mapper(terrain_manager);
-            float[,] obstacle_map = mapper.configure_obstacle_map(terrain_manager, (float)2);
+            float[,] obstacle_map = mapper.configure_obstacle_map(terrain_manager, 1);
             float[,] distance_map = mapper.configure_distance_map(obstacle_map);
 
             // Create planner and find path
@@ -115,8 +116,8 @@ namespace UnityStandardAssets.Vehicles.Car
                 old_wp = wp;
             }
 
-            Debug.Log("old Path size" + my_path.Count);
             // Removing abudant nodes from path
+            Debug.Log("old Path size" + my_path.Count);
             DouglasPeucker dp = new DouglasPeucker();
             dp_path = dp.DouglasPeuckerReduction(my_path, 1);
             Debug.Log("new Path size" + dp_path.Count);
@@ -124,24 +125,36 @@ namespace UnityStandardAssets.Vehicles.Car
             // Plot path
             Vector3 old_wpp = start_pos;
             foreach (Node n in dp_path)
-            {                
-                //we update the theta of each node while plotting
-                int indx = dp_path.IndexOf(n);
-                if (indx == 0)
-                {
-                    n.theta = (float)Math.PI / 2;
+            {   
+                if(dp_path.IndexOf(n) < dp_path.Count - 1)
+                {             
+                    Vector3 thisPoint = new Vector3(n.x, 0, n.z);
+                    Node nextNode = dp_path[dp_path.IndexOf(n)+1];  
+                    Vector3 nextPoint = new Vector3(nextNode.x, 0, nextNode.z);
+                    Vector3 direction = nextPoint - thisPoint;
+                    angle = Vector3.SignedAngle(Vector3.right, direction, Vector3.up);
+
+                    if(angle > 0)
+                    {
+                        angle -= 360;
+                    }
+
+                    n.theta = angle;
                 }
                 else
                 {
-                    n.theta = (float)Math.Atan((n.z - dp_path[indx - 1].z) / (n.x - dp_path[indx - 1].x));
+                    n.theta = angle;
                 }
+
                 Vector3 wp = new Vector3(n.x, 0, n.z);
                 Debug.DrawLine(old_wpp, wp, Color.blue, 100f);
                 old_wpp = wp;
             }
-            
+
+
             float dist;
-            //insert nodes to dp path
+
+            // Expand the path
             foreach (Node n in dp_path)
             {
                 //the index of current dp path node
@@ -164,7 +177,7 @@ namespace UnityStandardAssets.Vehicles.Car
                         parent = n;
                         for (int i = 1; i <= number; i++)
                         {
-                            float theta = dp_path[indx + 1].theta;
+                            float theta = dp_path[indx].theta;
                             Vector3 nextnode = new Vector3(dp_path[indx + 1].x, 0, dp_path[indx + 1].z);
                             Vector3 cnode = new Vector3(n.x,0,n.z);
                             Vector3 direction = nextnode - cnode;
@@ -181,6 +194,7 @@ namespace UnityStandardAssets.Vehicles.Car
                 }
                 expand_path.Add(n);
             }
+
             Debug.Log("expand Path size" + expand_path.Count);
 
             // Plot path
@@ -193,26 +207,20 @@ namespace UnityStandardAssets.Vehicles.Car
             }
             
 
-                // Getting controls of path
-            for (int i = 0; i < expand_path.Count; i++)
+            // Getting angle changes in path
+            for (int i = 0; i < dp_path.Count; i++)
             {   
-            if(i == 0)
-            {
-                old_angle = expand_path[i].theta;
-                controls.Add(0);
-            }
+                if(i == 0)
+                {   
+                    old_angle = dp_path[i].theta;
+                    controls.Add(0);
+                    continue;
+                }
 
-            new_angle = expand_path[i].theta;
-            angle_change = new_angle - old_angle;
-            old_angle = new_angle;
-
-            controls.Add(angle_change);
-            }
-
-            // Approximating cumulative forward angle changes in path
-            for(int i = 0; i < expand_path.Count - 3; i++)
-            {
-                cum_angle_change.Add(controls[i] + controls[i+1] + controls[i+2] + controls[i+3]);
+                new_angle = dp_path[i].theta;
+                angle_change = new_angle - old_angle;
+                old_angle = new_angle;
+                controls.Add((float)Math.Abs(angle_change));
             }
             
             // Going to FixedUpdate()
@@ -267,6 +275,8 @@ namespace UnityStandardAssets.Vehicles.Car
                     }
                     dummy_idx += 1;
                 }
+
+                /*
                 if(to_path_idx==last_path_idx)
                 {
                     path_node_count++;
@@ -277,11 +287,9 @@ namespace UnityStandardAssets.Vehicles.Car
                         path_node_count = 0;
                     }
                 }
-                else
-                {
-
-                }
                 last_path_idx = to_path_idx;
+                */
+
                 // Saving data about node on path closest to the car
                 closestNode = expand_path[to_path_idx];
                 closest = new Vector3(closestNode.x, 0, closestNode.z);
@@ -311,7 +319,36 @@ namespace UnityStandardAssets.Vehicles.Car
                     }
                     dummy_idx2 += 1;
                 }
+
                 Debug.Log("target node" + to_target_idx);
+
+                // Finding closest node on coarse path
+                float to_course_path = 100;
+                int to_course_path_idx = 0;
+                int dummy_idx3 = 0;
+                foreach(Node node in dp_path)
+                {
+                    pos = new Vector3(node.x, 0, node.z);
+                    difference = pos - transform.position;
+                    distance = (float) Math.Sqrt( Math.Pow(difference.x,2) + Math.Pow(difference.z, 2) );
+                    
+                    if(distance < to_course_path)
+                    {
+                        to_course_path = distance;
+                        to_course_path_idx = dummy_idx3;
+                    }
+                    dummy_idx3 += 1;
+                }
+
+                // Get information about next point on course path
+                try
+                {
+                    nextAngle = controls[to_course_path_idx + 1];
+                }
+                catch
+                {
+                    Debug.Log("Next node out of coarse path");
+                }
 
                 // Break condition
                 try
@@ -330,7 +367,7 @@ namespace UnityStandardAssets.Vehicles.Car
                 target_position = new Vector3(target.x, 0, target.z);
                 aheadOfTarget_pos = new Vector3(aheadOfTarget.x, 0, aheadOfTarget.z);
                 target_velocity = aheadOfTarget_pos-target_position;
-                Debug.DrawLine(transform.position, target_position);
+                Debug.DrawLine(transform.position, target_position, Color.white);
                 Debug.DrawLine(transform.position, transform.position + 10*target_velocity, Color.black);
 
                 // a PD-controller to get desired velocity
@@ -341,41 +378,49 @@ namespace UnityStandardAssets.Vehicles.Car
                 // Apply controls
                 steering = Vector3.Dot(desired_acceleration, transform.right);
                 acceleration = Vector3.Dot(desired_acceleration, transform.forward);
+                
                 if (!starting_phase)
                 {
-                    //Debug.Log("closest node" + to_path_idx);
-                    //Debug.Log("size" + cum_angle_change.Count + "insex-2=" + to_target_idx);
-                    my_max_speed = curvatureToSpeed(cum_angle_change[to_target_idx + 2]);
+                    Debug.Log("Next node on course path: " + (to_course_path_idx + 1));
+                    Debug.Log("Closest angle: " + (dp_path[to_course_path_idx].theta));
+                    Debug.Log("Upcoming angle: " + (dp_path[to_course_path_idx + 1].theta));
+                    Debug.Log("Upcoming angle change: " + nextAngle);
+                    my_max_speed = curvatureToSpeed(nextAngle);
                 }
 
-
+                /*
                 if(!is_breaking)
                 {
                     break_timer = 0;
                 }
+                */
             
-                if(my_speed > my_max_speed || is_breaking)
+                if(my_speed > my_max_speed)
                 {
                     Debug.Log("now breaking");
-                    is_breaking = true;
+                    //is_breaking = true;
 
+                    /*
                     if(break_timer == 0)
                     {
                         break_timer = Time.time + 1;
                     }
+                    */
                     
                     m_Car.Move(steering, -acceleration, -acceleration, 0f);
 
+                    /*
                     if(Time.time > break_timer)
                     {
                         is_breaking = false;
                     }
-                    if (cum_angle_change[to_target_idx] > Math.PI/3.6)
+
+                    if (controls[to_course_path_idx + 1] > 30)
                     {   
                         break_timer = Time.time + 1;                     
                     }
+                    */
                 }
-
                 else
                 {
                     m_Car.Move(steering, acceleration, acceleration, 0f);
@@ -393,7 +438,7 @@ namespace UnityStandardAssets.Vehicles.Car
                     if(stuck_timer <= Time.time && !counting)
                     {   
                         counting = true;
-                        stuck_timer = Time.time + 5;
+                        stuck_timer = Time.time + 1;
                     }
                     //Debug.Log("Point 5");
                     if (Time.time > stuck_timer)
@@ -410,7 +455,7 @@ namespace UnityStandardAssets.Vehicles.Car
             else
             {   
                 // Decide on lookbehind based on speed;
-                lookahead = speedToLookahead(my_speed);
+                lookahead = speedToLookahead(my_speed) + 4;
 
                 if(no_waypoint)
                 {
