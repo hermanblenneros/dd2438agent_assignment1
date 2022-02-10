@@ -153,7 +153,7 @@ namespace UnityStandardAssets.Vehicles.Car
                       
                             float steeringPenalty = 1 - steerAngle/maxSteerAngle; // (0,1)
                             float clearance = distance_map[(int)Math.Round((sucessor.x - x_low) / x_res), (int)Math.Round((sucessor.z - z_low) / z_res)];
-                            float obstaclePenalty = 20 - clearance; // (4,5)
+                            float obstaclePenalty = 20 - clearance; //
                             sucessor.g = n.g + (float)Math.Sqrt(2) + steeringPenalty + obstaclePenalty;
                             bool flag = false;
 
@@ -248,7 +248,7 @@ namespace UnityStandardAssets.Vehicles.Car
                 n = openSet.Dequeue();
 
                 // If the node is in the vicinity of the goal, assign it as parent to the goalnode and return the goalnode
-                if (calculateEuclidean(n.x, n.z, goalNode.x, goalNode.z) < 2)
+                if (calculateEuclidean(n.x, n.z, goalNode.x, goalNode.z) < 5)
                 {
                     Node finalNode = new Node(goalNode.x, goalNode.z, goalNode.theta, calculateGridIndex(goalNode.x, goalNode.z), 0, 0, 0, n);
                     goalNode = finalNode;
@@ -259,15 +259,16 @@ namespace UnityStandardAssets.Vehicles.Car
                 foreach (float Angle in orentations)
                 {
                     float actualAngle = n.theta + Angle;
-                    float dx = (float)Math.Cos(actualAngle) * x_res;
-                    float dz = (float)Math.Sin(actualAngle) * z_res;
+                    float dx = (float)Math.Cos(actualAngle) * arc;
+                    float dz = (float)Math.Sin(actualAngle) * arc;
                     sucessor = new Node(n.x + dx, n.z + dz, actualAngle, calculateGridIndex(n.x + dx, n.z + dz), 0, 0, 0, n);
 
                     // Check traversability
                     try
                     {
-                        if (obstacle_map[(int)Math.Round((sucessor.x - x_low) / x_res), (int)Math.Round((sucessor.z - z_low) / z_res)] == 1)
+                        if (obstacle_map[(int)Math.Round( (sucessor.x - x_low) / x_res - 0.5), (int)Math.Round((sucessor.z - z_low) / z_res - 0.5)] == 1)
                         {
+                            Debug.Log("x index: " + (Math.Round((sucessor.x - x_low) / x_res - 0.5)));
                             draw1 = new Vector3(n.x, 0, n.z);
                             draw2 = new Vector3(sucessor.x, 0, sucessor.z);
                             Debug.DrawLine(draw1, draw2, Color.yellow, 100f);
@@ -297,12 +298,19 @@ namespace UnityStandardAssets.Vehicles.Car
                             }
                         }
                         //Allow only one node per cell If allow many nodes per cell we use !closedSet.ContainsKey(sucessor.gridIdx) closedSet2.Get(sucessor.gridIdx, orentation) == null
-                        if (!closedSet.ContainsKey(sucessor.gridIdx))
+                        if (closedSet2.Get(sucessor.gridIdx, orentation) == null)
                         {
 
-                            //float steeringPenalty = (1 - steerAngle / maxSteerAngle);
-                            float obstaclePenalty = 20 - distance_map[(int)Math.Round((sucessor.x - x_low) / x_res), (int)Math.Round((sucessor.z - z_low) / z_res)];
-                            sucessor.g = n.g + (float)Math.Sqrt(2) + obstaclePenalty;
+                            if(distance_map[(int)Math.Round((sucessor.x - x_low) / x_res - 0.5), (int)Math.Round((sucessor.z - z_low) / z_res - 0.5)] > 5)
+                            {
+                                sucessor.g = n.g + arc;
+                            }
+                            else
+                            {
+                                float obstaclePenalty = 5 - distance_map[(int)Math.Round((sucessor.x - x_low) / x_res - 0.5), (int)Math.Round((sucessor.z - z_low) / z_res - 0.5)];
+                                sucessor.g = n.g + arc + obstaclePenalty;
+                            }
+
                             bool flag = false;
 
                             //Check and update the lower cost node in same cell
@@ -335,7 +343,7 @@ namespace UnityStandardAssets.Vehicles.Car
                                 Debug.DrawLine(draw1, draw2, Color.blue, 100f);
 
                                 // Push node onto the set of expanded nodes
-                                closedSet.Add(sucessor.gridIdx, sucessor);
+                                closedSet2.Set(sucessor.gridIdx, orentation, sucessor);
                             }
                         }
                     }

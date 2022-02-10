@@ -33,6 +33,7 @@ public class Mapper
 
         if (xRes >= 1 && zRes >= 1)
         {   
+            Debug.Log("Part 1");
             // Upsample in x-direction
             for (int i = 0; i < xNum; i++)
             {
@@ -71,7 +72,7 @@ public class Mapper
             int padding_time = (int)Math.Max(Math.Round(padding/ new_xRes), Math.Round(padding / new_zRes));
             Debug.Log("Padding time: " + padding_time);
             for(int t = 0; t < padding_time; t++)
-            {
+            {   
                 for (int i = 1; i < (int)(xSize * xRes) - 1; i++)
                 {
                     for (int j = 1; j < (int)(zSize * zRes) - 1; j++)
@@ -89,7 +90,8 @@ public class Mapper
         }
 
         else
-        {
+        {   
+            Debug.Log("Part 2");
             // We keep the origianl terrain map
             for (int i = 0; i < xSize; i++)
             {
