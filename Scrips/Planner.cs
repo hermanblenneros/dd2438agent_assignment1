@@ -99,7 +99,7 @@ namespace UnityStandardAssets.Vehicles.Car
                 n = openSet.Dequeue();
 
                 // If the node is in the vicinity of the goal, assign it as parent to the goalnode and return the goalnode
-                if(calculateEuclidean(n.x, n.z, goalNode.x, goalNode.z) < 2)
+                if(calculateEuclidean(n.x, n.z, goalNode.x, goalNode.z) < 5)
                 {
                     Node finalNode = new Node(goalNode.x, goalNode.z, goalNode.theta, calculateGridIndex(goalNode.x, goalNode.z), 0, 0, 0, n);
                     goalNode = finalNode;
@@ -117,11 +117,11 @@ namespace UnityStandardAssets.Vehicles.Car
                     // Check traversability
                     try
                     {
-                        if(obstacle_map[(int)Math.Round((sucessor.x - x_low) / x_res),(int)Math.Round((sucessor.z - z_low) / z_res)] == 1)
+                        if(obstacle_map[(int)Math.Round((sucessor.x - x_low) / x_res - 0.5),(int)Math.Round((sucessor.z - z_low) / z_res - 0.5)] == 1)
                         {   
                             draw1 = new Vector3(n.x, 0, n.z);
                             draw2 = new Vector3(sucessor.x, 0, sucessor.z);
-                            //Debug.DrawLine(draw1, draw2, Color.yellow, 1f);
+                            Debug.DrawLine(draw1, draw2, Color.yellow, 100f);
                             continue;
                         }
                     }
@@ -150,11 +150,19 @@ namespace UnityStandardAssets.Vehicles.Car
                         //if one node per cell we use !closedSet.ContainsKey(sucessor.gridIdx) 
                         if (closedSet2.Get(sucessor.gridIdx, orentation) == null)
                         {
-                      
                             float steeringPenalty = 1 - steerAngle/maxSteerAngle; // (0,1)
-                            float clearance = distance_map[(int)Math.Round((sucessor.x - x_low) / x_res), (int)Math.Round((sucessor.z - z_low) / z_res)];
-                            float obstaclePenalty = 20 - clearance; //
-                            sucessor.g = n.g + (float)Math.Sqrt(2) + steeringPenalty + obstaclePenalty;
+
+                            if(distance_map[(int)Math.Round((sucessor.x - x_low) / x_res - 0.5), (int)Math.Round((sucessor.z - z_low) / z_res - 0.5)] > 5)
+                            {
+                                float obstaclePenalty = 0;
+                                sucessor.g = n.g + (float)Math.Sqrt(2) + steeringPenalty + obstaclePenalty;
+                            }
+                            else
+                            {
+                                float obstaclePenalty = 5 - distance_map[(int)Math.Round((sucessor.x - x_low) / x_res - 0.5), (int)Math.Round((sucessor.z - z_low) / z_res - 0.5)];
+                                sucessor.g = n.g + (float)Math.Sqrt(2) + steeringPenalty + (float)Math.Sqrt(2)*obstaclePenalty;
+                            }
+
                             bool flag = false;
 
                             foreach (Node one in openSet)
@@ -180,9 +188,9 @@ namespace UnityStandardAssets.Vehicles.Car
                                 openSet.Enqueue(sucessor, sucessor.f);
 
                                 // Drawing some stuff
-                                //draw1 = new Vector3(n.x, 0, n.z);
-                                //draw2 = new Vector3(sucessor.x, 0, sucessor.z);
-                                //Debug.DrawLine(draw1, draw2, Color.blue, 10f);
+                                draw1 = new Vector3(n.x, 0, n.z);
+                                draw2 = new Vector3(sucessor.x, 0, sucessor.z);
+                                Debug.DrawLine(draw1, draw2, Color.blue, 100f);
 
                                 // Push node onto the set of expanded nodes
                                 //closedSet.Add(sucessor.gridIdx, sucessor);
